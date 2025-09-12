@@ -8,7 +8,7 @@ if (Test-Path $AppDst) {
 
 # 2. Build Flutter
 Set-Location $AppSrc
-flutter build web --base-href /app/
+flutter build web --base-href /app/ --pwa-strategy=none
 Set-Location ..
 
 # 3. Copy new build
