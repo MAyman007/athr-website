@@ -107,6 +107,12 @@ section {
     color: var(--text-primary);
 }
 
+.btn-inverted {
+    background-color: var(--bg-primary);
+    color: var(--accent-teal);
+    border: 2px solid var(--accent-teal);
+}
+
 /* --- Header & Hero --- */
 .hero {
     background-color: var(--bg-primary);
