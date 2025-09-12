@@ -71,7 +71,7 @@ class LoginPage extends StatelessWidget {
                     onPressed: () {
                       context.go('/signup');
                     },
-                    child: const Text('Don’t have an account? Sign up'),
+                    child: const Text('No organization profile? Create one'),
                   ),
                 ],
               ),
