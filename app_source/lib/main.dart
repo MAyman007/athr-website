@@ -31,7 +31,7 @@ class AthrApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'ATHR App',
+      title: 'ATHR',
       routerConfig: _router,
       theme: ThemeData(
         useMaterial3: true,

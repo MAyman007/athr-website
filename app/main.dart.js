@@ -35734,7 +35734,7 @@ A.Zo.prototype={
 $0(){A.kE(this.a).jx("/signup",null)},
 $S:0}
 A.DC.prototype={
-N(a){return new A.qb(this.c,"ATHR App",A.rd(null,null,B.B0,B.k,!0),null)}}
+N(a){return new A.qb(this.c,"ATHR",A.rd(null,null,B.B0,B.k,!0),null)}}
 A.SF.prototype={
 $2(a,b){return B.D1},
 $S:301}
