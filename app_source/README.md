@@ -1,6 +1,6 @@
 # athr_app
 
-A new Flutter project.
+Actionable Threat Intelligence for your Org..
 
 ## Getting Started
 
