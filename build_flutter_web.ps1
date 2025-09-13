@@ -8,6 +8,8 @@ if (Test-Path $AppDst) {
 
 # 2. Build Flutter
 Set-Location $AppSrc
+flutter clean
+flutter pub get
 flutter build web --base-href /app/ --pwa-strategy=none
 Set-Location ..
 
