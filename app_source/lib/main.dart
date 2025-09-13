@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'login_page.dart';
-import 'signup_page.dart';
-import 'dashboard_page.dart';
-import 'admin_page.dart';
+import 'pages/login_page.dart';
+import 'pages/signup_page.dart';
+import 'pages/dashboard_page.dart';
+import 'pages/admin_page.dart';
 
 void main() {
   runApp(AthrApp());
