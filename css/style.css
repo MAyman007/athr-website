@@ -1,13 +1,6 @@
-/* 
-  New Design for ATHR
-  - Modern, dark-mode-first aesthetic
-  - Enhanced visual hierarchy and spacing
-  - Interactive hover effects
-*/
-
 :root {
     --bg-primary: #04192a;
-    --bg-secondary: #1a2c3a;
+    --bg-secondary: #0d263a;
     --accent-teal: #17efdf;
     --accent-red: #e73335;
     --text-primary: #e9ecef;
