@@ -32,7 +32,7 @@ class AthrApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
-      title: 'ATHR',
+      title: 'Athr',
       routerConfig: _router,
       theme: ThemeData(
         useMaterial3: true,

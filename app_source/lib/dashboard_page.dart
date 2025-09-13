@@ -8,7 +8,7 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ATHR Dashboard'),
+        title: const Text('Athr Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
