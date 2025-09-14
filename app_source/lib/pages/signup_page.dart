@@ -139,10 +139,16 @@ class _SignupPageState extends State<SignupPage> {
     });
   }
 
-  Future<void> _launchURL(String url) async {
+  Future<void> _launchURL(String url, bool isHome) async {
     final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri)) {
-      throw 'Could not launch $url';
+    if (isHome) {
+      if (!await launchUrl(uri, webOnlyWindowName: '_self')) {
+        throw 'Could not launch $url';
+      }
+    } else {
+      if (!await launchUrl(uri)) {
+        throw 'Could not launch $url';
+      }
     }
   }
 
@@ -231,8 +237,14 @@ class _SignupPageState extends State<SignupPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Athr Onboarding'),
-        centerTitle: true,
+        title: GestureDetector(
+          onTap: () => _launchURL("../", true),
+          child: Text(
+            'Athr',
+            style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
+          ),
+        ),
+        // centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -248,32 +260,59 @@ class _SignupPageState extends State<SignupPage> {
           ),
         ),
         child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Stepper(
-              type: StepperType.vertical,
-              currentStep: _currentStep,
-              onStepContinue: _onStepContinue,
-              onStepCancel: _onStepCancel,
-              controlsBuilder: (BuildContext context, ControlsDetails details) {
-                return Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Row(
-                    children: <Widget>[
-                      ElevatedButton(
-                        onPressed: details.onStepContinue,
-                        child: Text(_currentStep == 3 ? 'Finish' : 'Continue'),
-                      ),
-                      if (_currentStep > 0)
-                        TextButton(
-                          onPressed: details.onStepCancel,
-                          child: const Text('Back'),
-                        ),
-                    ],
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const Text(
+                  'Athr Onboarding',
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromARGB(255, 255, 255, 255),
                   ),
-                );
-              },
-              steps: _getSteps(),
+                ),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Stepper(
+                    type: StepperType.vertical,
+                    currentStep: _currentStep,
+                    onStepContinue: _onStepContinue,
+                    onStepCancel: _onStepCancel,
+                    controlsBuilder:
+                        (BuildContext context, ControlsDetails details) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 16.0),
+                            child: Row(
+                              children: <Widget>[
+                                ElevatedButton(
+                                  onPressed: details.onStepContinue,
+                                  child: Text(
+                                    _currentStep == 3 ? 'Finish' : 'Continue',
+                                  ),
+                                ),
+                                if (_currentStep > 0)
+                                  TextButton(
+                                    onPressed: details.onStepCancel,
+                                    child: const Text('Back'),
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                    steps: _getSteps(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    context.go('/login');
+                  },
+                  child: const Text(
+                    'Already have an organization profile? Log in',
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
           ),
         ),
@@ -382,7 +421,8 @@ class _SignupPageState extends State<SignupPage> {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => _launchURL('../terms-of-service.html'),
+                        ..onTap = () =>
+                            _launchURL('../terms-of-service', false),
                     ),
                     const TextSpan(text: ' and '),
                     TextSpan(
@@ -392,7 +432,7 @@ class _SignupPageState extends State<SignupPage> {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => _launchURL('../privacy-policy.html'),
+                        ..onTap = () => _launchURL('../privacy-policy', false),
                     ),
                     const TextSpan(text: '.'),
                   ],
