@@ -29,6 +29,7 @@ class _SignupPageState extends State<SignupPage> {
   final _passwordController = TextEditingController();
   double _passwordStrength = 0;
   String _passwordStrengthText = 'Weak';
+  bool _isPasswordObscured = true;
 
   // Step 2: Primary Assets
   final _domainController = TextEditingController();
@@ -44,6 +45,16 @@ class _SignupPageState extends State<SignupPage> {
   final _primaryEmailController = TextEditingController();
   final _secondaryEmailController = TextEditingController();
   String _alertFrequency = 'Daily Digest';
+
+  // Regex for validation
+  // More robust domain regex: disallows leading/trailing hyphens and IP addresses.
+  final _domainRegex = RegExp(
+    r'^(?!-)(?!.*--)[a-zA-Z0-9-]{1,63}(?<!-)(\.[a-zA-Z]{2,})+$',
+  );
+  // Stricter CIDR regex.
+  final _cidrRegex = RegExp(
+    r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/([0-9]|[1-2][0-9]|3[0-2]))?$',
+  );
 
   @override
   void initState() {
@@ -82,14 +93,15 @@ class _SignupPageState extends State<SignupPage> {
       strength = 0;
       strengthText = 'Weak';
     } else {
-      if (password.length >= 8) strength += 0.3;
+      if (password.length >= 8) strength += 0.2;
       if (RegExp(r'[A-Z]').hasMatch(password)) strength += 0.2;
       if (RegExp(r'[a-z]').hasMatch(password)) strength += 0.2;
       if (RegExp(r'[0-9]').hasMatch(password)) strength += 0.2;
-      if (RegExp(r'[^A-Za-z0-9]').hasMatch(password)) strength += 0.1;
+      if (RegExp(r'[^A-Za-z0-9]').hasMatch(password)) strength += 0.2;
     }
 
-    if (strength > 0.8) {
+    if (strength >= 0.9) {
+      // Needs all 5 conditions to be strong
       strengthText = 'Strong';
     } else if (strength > 0.5) {
       strengthText = 'Medium';
@@ -101,43 +113,46 @@ class _SignupPageState extends State<SignupPage> {
     });
   }
 
-  void _addDomain() {
-    if (_domainController.text.isNotEmpty &&
-        !_domains.contains(_domainController.text)) {
-      setState(() {
-        _domains.add(_domainController.text);
-        _domainController.clear();
-      });
-    }
-  }
-
+  void _addDomain() => _addItemToList(_domainController, _domains);
   void _removeDomain(String domain) => setState(() => _domains.remove(domain));
 
-  void _addIpRange() {
-    if (_ipRangeController.text.isNotEmpty &&
-        !_ipRanges.contains(_ipRangeController.text)) {
-      setState(() {
-        _ipRanges.add(_ipRangeController.text);
-        _ipRangeController.clear();
-      });
-    }
-  }
-
+  void _addIpRange() => _addItemToList(_ipRangeController, _ipRanges);
   void _removeIpRange(String ipRange) =>
       setState(() => _ipRanges.remove(ipRange));
 
-  void _addKeyword() {
-    if (_keywordController.text.isNotEmpty &&
-        !_keywords.contains(_keywordController.text)) {
-      setState(() {
-        _keywords.add(_keywordController.text);
-        _keywordController.clear();
-      });
+  void _addKeyword() => _addItemToList(_keywordController, _keywords);
+  void _removeKeyword(String keyword) =>
+      setState(() => _keywords.remove(keyword));
+
+  void _addItemToList(TextEditingController controller, List<String> list) {
+    final text = controller.text.trim();
+    final formState = _getFormKeyForStep(_currentStep)?.currentState;
+
+    // Trigger validation on the form field
+    if (formState?.validate() ?? false) {
+      if (text.isNotEmpty && !list.contains(text)) {
+        setState(() {
+          list.add(text);
+          controller.clear();
+        });
+      }
     }
   }
 
-  void _removeKeyword(String keyword) =>
-      setState(() => _keywords.remove(keyword));
+  GlobalKey<FormState>? _getFormKeyForStep(int step) {
+    switch (step) {
+      case 0:
+        return _step1Key;
+      case 1:
+        return _step2Key;
+      case 2:
+        return _step3Key;
+      case 3:
+        return _step4Key;
+      default:
+        return null;
+    }
+  }
 
   Future<void> _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
@@ -375,9 +390,15 @@ class _SignupPageState extends State<SignupPage> {
                   prefixIcon: Icon(Icons.business),
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Please enter your organization name'
-                    : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your organization name';
+                  }
+                  if (value.length > 100) {
+                    return 'Organization name cannot exceed 100 characters';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -387,9 +408,15 @@ class _SignupPageState extends State<SignupPage> {
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Please enter your full name'
-                    : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your full name';
+                  }
+                  if (value.length > 100) {
+                    return 'Full name cannot exceed 100 characters';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -408,21 +435,57 @@ class _SignupPageState extends State<SignupPage> {
                   if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                     return 'Please enter a valid email address';
                   }
+                  if (value.length > 100) {
+                    return 'Email cannot exceed 100 characters';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: _isPasswordObscured,
+                decoration: InputDecoration(
                   labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordObscured
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordObscured = !_isPasswordObscured;
+                      });
+                    },
+                  ),
                 ),
-                validator: (value) => (value == null || value.length < 8)
-                    ? 'Password must be at least 8 characters'
-                    : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a password';
+                  }
+                  if (value.length < 8) {
+                    return 'Password must be at least 8 characters long.';
+                  }
+                  if (!RegExp(r'[a-z]').hasMatch(value)) {
+                    return 'Password must contain a lowercase letter.';
+                  }
+                  if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                    return 'Password must contain an uppercase letter.';
+                  }
+                  if (!RegExp(r'[0-9]').hasMatch(value)) {
+                    return 'Password must contain a number.';
+                  }
+                  if (!RegExp(r'[^A-Za-z0-9]').hasMatch(value)) {
+                    return 'Password must contain a special character.';
+                  }
+                  if (value.length > 100) {
+                    return 'Password cannot exceed 100 characters';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 8),
               Column(
@@ -458,9 +521,7 @@ class _SignupPageState extends State<SignupPage> {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => _launchURL(
-                          'https://athr.dev/terms',
-                        ), // Replace with your actual URL
+                        ..onTap = () => _launchURL('../terms-of-service'),
                     ),
                     const TextSpan(text: ' and '),
                     TextSpan(
@@ -470,9 +531,7 @@ class _SignupPageState extends State<SignupPage> {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => _launchURL(
-                          'https://athr.dev/privacy',
-                        ), // Replace with your actual URL
+                        ..onTap = () => _launchURL('../privacy-policy'),
                     ),
                     const TextSpan(text: '.'),
                   ],
@@ -495,39 +554,24 @@ class _SignupPageState extends State<SignupPage> {
                 'Enter the domains your organization owns. Athr will monitor for leaked credentials, code, and brand impersonation related to these domains.',
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _domainController,
-                      decoration: const InputDecoration(
-                        labelText: 'Domain',
-                        hintText: 'e.g., your-company.com',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, size: 30),
-                    onPressed: _addDomain,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: _domains
-                    .map(
-                      (domain) => Chip(
-                        label: Text(domain),
-                        onDeleted: () => _removeDomain(domain),
-                        deleteIcon: const Icon(Icons.cancel),
-                      ),
-                    )
-                    .toList(),
+              _ChipInputSection(
+                controller: _domainController,
+                items: _domains,
+                labelText: 'Domain',
+                hintText: 'e.g., your-company.com',
+                onAdd: _addDomain,
+                onRemove: _removeDomain,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final trimmedValue = value.trim();
+                  if (trimmedValue.length > 100) {
+                    return 'Domain cannot exceed 100 characters';
+                  }
+                  if (!_domainRegex.hasMatch(trimmedValue)) {
+                    return 'Invalid domain format';
+                  }
+                  return null;
+                },
               ),
             ],
           ),
@@ -550,38 +594,24 @@ class _SignupPageState extends State<SignupPage> {
                 'Monitor for mentions in threat intelligence feeds, malware logs, and public vulnerability scans.',
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _ipRangeController,
-                      decoration: const InputDecoration(
-                        labelText: 'IP Range (CIDR notation)',
-                        hintText: 'e.g., 192.168.1.0/24',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, size: 30),
-                    onPressed: _addIpRange,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: _ipRanges
-                    .map(
-                      (ip) => Chip(
-                        label: Text(ip),
-                        onDeleted: () => _removeIpRange(ip),
-                      ),
-                    )
-                    .toList(),
+              _ChipInputSection(
+                controller: _ipRangeController,
+                items: _ipRanges,
+                labelText: 'IP Range (CIDR notation)',
+                hintText: 'e.g., 192.168.1.0/24',
+                onAdd: _addIpRange,
+                onRemove: _removeIpRange,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  final trimmedValue = value.trim();
+                  if (trimmedValue.length > 45) {
+                    return 'IP Range cannot exceed 45 characters';
+                  }
+                  if (!_cidrRegex.hasMatch(trimmedValue)) {
+                    return 'Invalid CIDR notation';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
               const Text(
@@ -592,38 +622,20 @@ class _SignupPageState extends State<SignupPage> {
                 'Track mentions of internal project names or brands on code repositories, paste sites, and forums.',
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _keywordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Keyword',
-                        hintText: 'e.g., Project-Chimera',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, size: 30),
-                    onPressed: _addKeyword,
-                    color: Theme.of(context).primaryColor,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 4.0,
-                children: _keywords
-                    .map(
-                      (keyword) => Chip(
-                        label: Text(keyword),
-                        onDeleted: () => _removeKeyword(keyword),
-                      ),
-                    )
-                    .toList(),
+              _ChipInputSection(
+                controller: _keywordController,
+                items: _keywords,
+                labelText: 'Keyword',
+                hintText: 'e.g., Project-Chimera',
+                onAdd: _addKeyword,
+                onRemove: _removeKeyword,
+                validator: (value) {
+                  final trimmedValue = value?.trim() ?? '';
+                  if (trimmedValue.length > 100) {
+                    return 'Keyword cannot exceed 100 characters';
+                  }
+                  return null;
+                },
               ),
             ],
           ),
@@ -656,6 +668,9 @@ class _SignupPageState extends State<SignupPage> {
                   if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                     return 'Please enter a valid email address';
                   }
+                  if (value.length > 100) {
+                    return 'Email cannot exceed 100 characters';
+                  }
                   return null;
                 },
               ),
@@ -668,6 +683,16 @@ class _SignupPageState extends State<SignupPage> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                    return 'Please enter a valid email address';
+                  }
+                  if (value.length > 100) {
+                    return 'Email cannot exceed 100 characters';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 24),
               const Text(
@@ -702,5 +727,73 @@ class _SignupPageState extends State<SignupPage> {
         state: _currentStep >= 3 ? StepState.indexed : StepState.disabled,
       ),
     ];
+  }
+}
+
+/// A reusable widget for text input with a list of chips.
+class _ChipInputSection extends StatelessWidget {
+  final TextEditingController controller;
+  final List<String> items;
+  final String labelText;
+  final String hintText;
+  final VoidCallback onAdd;
+  final Function(String) onRemove;
+  final String? Function(String?)? validator;
+
+  const _ChipInputSection({
+    required this.controller,
+    required this.items,
+    required this.labelText,
+    required this.hintText,
+    required this.onAdd,
+    required this.onRemove,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: labelText,
+                  hintText: hintText,
+                  border: const OutlineInputBorder(),
+                ),
+                validator: validator,
+                onFieldSubmitted: (_) => onAdd(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.add_circle, size: 30),
+              onPressed: onAdd,
+              color: Theme.of(context).primaryColor,
+              tooltip: 'Add',
+            ),
+          ],
+        ),
+        if (items.isNotEmpty) const SizedBox(height: 8),
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 4.0,
+          children: items
+              .map(
+                (item) => Chip(
+                  label: Text(item),
+                  onDeleted: () => onRemove(item),
+                  deleteIcon: const Icon(Icons.cancel, size: 18),
+                ),
+              )
+              .toList(),
+        ),
+      ],
+    );
   }
 }

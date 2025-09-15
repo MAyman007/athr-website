@@ -22,6 +22,7 @@ class _LoginPageState extends State<LoginPage> {
 
   // State to manage the loading indicator
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
 
   @override
   void dispose() {
@@ -152,6 +153,9 @@ class _LoginPageState extends State<LoginPage> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
                           }
+                          if (value.length > 100) {
+                            return 'Email cannot exceed 100 characters';
+                          }
                           final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
                           if (!emailRegex.hasMatch(value)) {
                             return 'Please enter a valid email';
@@ -163,14 +167,29 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _passwordController, // Assign controller
-                        obscureText: true,
-                        decoration: const InputDecoration(
+                        obscureText: _isPasswordObscured,
+                        decoration: InputDecoration(
                           labelText: 'Password',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordObscured
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isPasswordObscured = !_isPasswordObscured;
+                              });
+                            },
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your password';
+                          }
+                          if (value.length > 100) {
+                            return 'Password cannot exceed 100 characters';
                           }
                           return null;
                         },
