@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'dart:developer' as developer;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -13,6 +14,7 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   int _currentStep = 0;
+  bool _isLoading = false;
 
   // Form Keys
   final _step1Key = GlobalKey<FormState>();
@@ -39,15 +41,22 @@ class _SignupPageState extends State<SignupPage> {
   final List<String> _keywords = [];
 
   // Step 4: Alerts
+  final _primaryEmailController = TextEditingController();
   final _secondaryEmailController = TextEditingController();
   String _alertFrequency = 'Daily Digest';
-
-  bool _isFinished = false;
 
   @override
   void initState() {
     super.initState();
     _passwordController.addListener(_updatePasswordStrength);
+    // When the email in step 1 changes, update the initial value in step 4
+    _workEmailController.addListener(() {
+      if (mounted) {
+        setState(() {
+          _primaryEmailController.text = _workEmailController.text;
+        });
+      }
+    });
   }
 
   @override
@@ -59,6 +68,7 @@ class _SignupPageState extends State<SignupPage> {
     _domainController.dispose();
     _ipRangeController.dispose();
     _keywordController.dispose();
+    _primaryEmailController.dispose();
     _secondaryEmailController.dispose();
     super.dispose();
   }
@@ -101,11 +111,7 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  void _removeDomain(String domain) {
-    setState(() {
-      _domains.remove(domain);
-    });
-  }
+  void _removeDomain(String domain) => setState(() => _domains.remove(domain));
 
   void _addIpRange() {
     if (_ipRangeController.text.isNotEmpty &&
@@ -117,11 +123,8 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  void _removeIpRange(String ipRange) {
-    setState(() {
-      _ipRanges.remove(ipRange);
-    });
-  }
+  void _removeIpRange(String ipRange) =>
+      setState(() => _ipRanges.remove(ipRange));
 
   void _addKeyword() {
     if (_keywordController.text.isNotEmpty &&
@@ -133,22 +136,13 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  void _removeKeyword(String keyword) {
-    setState(() {
-      _keywords.remove(keyword);
-    });
-  }
+  void _removeKeyword(String keyword) =>
+      setState(() => _keywords.remove(keyword));
 
-  Future<void> _launchURL(String url, bool isHome) async {
+  Future<void> _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
-    if (isHome) {
-      if (!await launchUrl(uri, webOnlyWindowName: '_self')) {
-        throw 'Could not launch $url';
-      }
-    } else {
-      if (!await launchUrl(uri)) {
-        throw 'Could not launch $url';
-      }
+    if (!await launchUrl(uri)) {
+      throw 'Could not launch $url';
     }
   }
 
@@ -160,22 +154,15 @@ class _SignupPageState extends State<SignupPage> {
         break;
       case 1:
         isStepValid = _step2Key.currentState?.validate() ?? false;
-        if (isStepValid && _domains.isEmpty) {
-          // Optionally show a snackbar if at least one domain is required
+        if (_domains.isEmpty) {
+          isStepValid = false;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please add at least one domain.')),
           );
-          isStepValid = false;
         }
         break;
       case 2:
         isStepValid = _step3Key.currentState?.validate() ?? false;
-        if (isStepValid && _ipRanges.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please add at least one IP range.')),
-          );
-          isStepValid = false;
-        }
         break;
       case 3:
         isStepValid = _step4Key.currentState?.validate() ?? false;
@@ -184,9 +171,7 @@ class _SignupPageState extends State<SignupPage> {
 
     if (isStepValid) {
       if (_currentStep < 3) {
-        setState(() {
-          _currentStep += 1;
-        });
+        setState(() => _currentStep += 1);
       } else {
         _finishOnboarding();
       }
@@ -194,57 +179,117 @@ class _SignupPageState extends State<SignupPage> {
   }
 
   void _onStepCancel() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep -= 1;
-      });
+    if (_currentStep > 0) setState(() => _currentStep -= 1);
+  }
+
+  Future<void> _finishOnboarding() async {
+    if (!(_step4Key.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: _workEmailController.text.trim(),
+            password: _passwordController.text,
+          );
+
+      final User? user = userCredential.user;
+
+      if (user == null) {
+        throw Exception('User creation failed, please try again.');
+      }
+
+      await user.updateDisplayName(_fullNameController.text.trim());
+      await _createOrganizationAndUserData(user);
+
+      if (mounted) {
+        context.go('/dashboard');
+      }
+    } on FirebaseAuthException catch (e) {
+      String message;
+      if (e.code == 'weak-password') {
+        message = 'The password provided is too weak.';
+      } else if (e.code == 'email-already-in-use') {
+        message = 'An account already exists for that email.';
+      } else {
+        message = 'An error occurred. Please check your details.';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An unexpected error occurred: ${e.toString()}'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  void _finishOnboarding() {
-    if (_step4Key.currentState?.validate() ?? false) {
-      developer.log('--- Onboarding Data ---');
-      developer.log('Organization: ${_organizationNameController.text}');
-      developer.log('Full Name: ${_fullNameController.text}');
-      developer.log('Work Email: ${_workEmailController.text}');
-      developer.log('Domains: $_domains');
-      developer.log('IP Ranges: $_ipRanges');
-      developer.log('Keywords: $_keywords');
-      developer.log('Secondary Email: ${_secondaryEmailController.text}');
-      developer.log('Alert Frequency: $_alertFrequency');
-      developer.log('-----------------------');
+  Future<void> _createOrganizationAndUserData(User user) async {
+    final firestore = FirebaseFirestore.instance;
+    final orgRef = firestore.collection('organizations').doc();
+    final userRef = firestore.collection('users').doc(user.uid);
+    final batch = firestore.batch();
 
-      // Set a flag to trigger a rebuild to a loading state,
-      // then navigate after the build is complete.
-      setState(() {
-        _isFinished = true;
-      });
-    }
+    batch.set(orgRef, {
+      'name': _organizationNameController.text.trim(),
+      'domains': _domains,
+      'ipRanges': _ipRanges,
+      'keywords': _keywords,
+      'createdBy': user.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    batch.set(userRef, {
+      'orgId': orgRef.id,
+      'email': user.email,
+      'fullName': _fullNameController.text.trim(),
+      'role': 'admin',
+      'settings': {
+        'primaryNotificationEmail': _primaryEmailController.text.trim(),
+        'secondaryNotificationEmail': _secondaryEmailController.text.trim(),
+        'alertFrequency': _alertFrequency,
+      },
+    });
+
+    await batch.commit();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isFinished) {
-      // After finishing, show a loading indicator and navigate post-frame.
-      // This decouples navigation from the Stepper's state transition.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          context.go('/dashboard');
-        }
-      });
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Creating your organization...'),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: GestureDetector(
-          onTap: () => _launchURL("../", true),
-          child: Text(
-            'Athr',
-            style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
-          ),
+        title: Text(
+          'Athr',
+          style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
         ),
-        // centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -265,11 +310,7 @@ class _SignupPageState extends State<SignupPage> {
               children: [
                 const Text(
                   'Athr Onboarding',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    color: Color.fromARGB(255, 255, 255, 255),
-                  ),
+                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
                 ),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 800),
@@ -278,35 +319,32 @@ class _SignupPageState extends State<SignupPage> {
                     currentStep: _currentStep,
                     onStepContinue: _onStepContinue,
                     onStepCancel: _onStepCancel,
-                    controlsBuilder:
-                        (BuildContext context, ControlsDetails details) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 16.0),
-                            child: Row(
-                              children: <Widget>[
-                                ElevatedButton(
-                                  onPressed: details.onStepContinue,
-                                  child: Text(
-                                    _currentStep == 3 ? 'Finish' : 'Continue',
-                                  ),
-                                ),
-                                if (_currentStep > 0)
-                                  TextButton(
-                                    onPressed: details.onStepCancel,
-                                    child: const Text('Back'),
-                                  ),
-                              ],
+                    controlsBuilder: (context, details) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Row(
+                          children: <Widget>[
+                            ElevatedButton(
+                              onPressed: details.onStepContinue,
+                              child: Text(
+                                _currentStep == 3 ? 'Finish' : 'Continue',
+                              ),
                             ),
-                          );
-                        },
+                            if (_currentStep > 0)
+                              TextButton(
+                                onPressed: details.onStepCancel,
+                                child: const Text('Back'),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                     steps: _getSteps(),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () {
-                    context.go('/login');
-                  },
+                  onPressed: () => context.go('/login'),
                   child: const Text(
                     'Already have an organization profile? Log in',
                   ),
@@ -322,7 +360,6 @@ class _SignupPageState extends State<SignupPage> {
 
   List<Step> _getSteps() {
     return [
-      // Step 1: Create Your Secure Account
       Step(
         title: const Text('Create Your Secure Account'),
         content: Form(
@@ -421,8 +458,9 @@ class _SignupPageState extends State<SignupPage> {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () =>
-                            _launchURL('../terms-of-service', false),
+                        ..onTap = () => _launchURL(
+                          'https://athr.dev/terms',
+                        ), // Replace with your actual URL
                     ),
                     const TextSpan(text: ' and '),
                     TextSpan(
@@ -432,7 +470,9 @@ class _SignupPageState extends State<SignupPage> {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => _launchURL('../privacy-policy', false),
+                        ..onTap = () => _launchURL(
+                          'https://athr.dev/privacy',
+                        ), // Replace with your actual URL
                     ),
                     const TextSpan(text: '.'),
                   ],
@@ -444,7 +484,6 @@ class _SignupPageState extends State<SignupPage> {
         isActive: _currentStep >= 0,
         state: _currentStep > 0 ? StepState.complete : StepState.indexed,
       ),
-      // Step 2: Define Your Primary Assets
       Step(
         title: const Text('Define Your Primary Assets'),
         content: Form(
@@ -496,7 +535,6 @@ class _SignupPageState extends State<SignupPage> {
         isActive: _currentStep >= 1,
         state: _currentStep > 1 ? StepState.complete : StepState.indexed,
       ),
-      // Step 3: Add High-Value Assets
       Step(
         title: const Text('Add High-Value Assets'),
         content: Form(
@@ -504,7 +542,6 @@ class _SignupPageState extends State<SignupPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // IP Ranges
               const Text(
                 'IP Ranges',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -547,7 +584,6 @@ class _SignupPageState extends State<SignupPage> {
                     .toList(),
               ),
               const SizedBox(height: 24),
-              // Brand & Project Keywords
               const Text(
                 'Brand & Project Keywords',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -595,7 +631,6 @@ class _SignupPageState extends State<SignupPage> {
         isActive: _currentStep >= 2,
         state: _currentStep > 2 ? StepState.complete : StepState.indexed,
       ),
-      // Step 4: Configure Your Alerts
       Step(
         title: const Text('Configure Your Alerts'),
         content: Form(
@@ -606,13 +641,23 @@ class _SignupPageState extends State<SignupPage> {
               const Text('Where should we send critical alerts?'),
               const SizedBox(height: 16),
               TextFormField(
-                initialValue: _workEmailController.text,
+                controller: _primaryEmailController,
                 decoration: const InputDecoration(
                   labelText: 'Primary Notification Email',
                   prefixIcon: Icon(Icons.email),
                   border: OutlineInputBorder(),
                 ),
+                readOnly: true,
                 keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter an email';
+                  }
+                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                    return 'Please enter a valid email address';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -654,7 +699,7 @@ class _SignupPageState extends State<SignupPage> {
           ),
         ),
         isActive: _currentStep >= 3,
-        state: _currentStep > 3 ? StepState.complete : StepState.indexed,
+        state: _currentStep >= 3 ? StepState.indexed : StepState.disabled,
       ),
     ];
   }

@@ -1,3 +1,5 @@
+import 'package:athr/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,7 +8,9 @@ import 'pages/signup_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/admin_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(AthrApp());
 }
 
@@ -22,7 +26,6 @@ class AthrApp extends StatelessWidget {
         builder: (context, state) => const DashboardPage(),
       ),
       GoRoute(path: '/admin', builder: (context, state) => const AdminPage()),
-      // add more routes as needed
     ],
   );
 
