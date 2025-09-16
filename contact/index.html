@@ -41,21 +41,30 @@
         .contact-form .btn {
             width: 100%;
         }
+        /* Overrides for a slimmer header on this page */
+        .hero {
+            padding: 1rem 0;
+        }
+        .navbar {
+            padding-bottom: 0.5rem;
+        }
+        .features {
+            padding-top: 1rem;
+        }
+        @media (min-width: 769px) {
+            .navbar { padding: 0.5rem 0; }
+        }
     </style>
 </head>
 <body>
 
-    <!-- <header class="hero">
+    <header class="hero">
         <div class="container">
             <nav class="navbar">
-                <a href="index" class="logo-link"><div class="logo">Athr</div></a>
-                <ul class="nav-links">
-                    <li><a href="index">Home</a></li>
-                    <li><a href="/app/#/login">Login</a></li>
-                </ul>
+                <a href="../" class="logo-link"><div class="logo">Athr</div></a>
             </nav>
         </div>
-    </header> -->
+    </header>
 
     <main>
         <section id="contact-page" class="features">
@@ -89,8 +98,8 @@
         <div class="container">
             <p class="copyright">&copy; 2025 Athr Intelligence. All rights reserved.</p>
             <ul class="footer-links">
-                <li><a href="../">Home</a></li>
                 <li><a href="../about">About</a></li>
+                <li><a href="">Contact</a></li>
                 <li><a href="../privacy-policy">Privacy Policy</a></li>
                 <li><a href="../terms-of-service">Terms of Service</a></li>
             </ul>
