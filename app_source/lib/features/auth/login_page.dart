@@ -1,36 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import 'login_viewmodel.dart';
 
-// Firebase Import
-import 'package:firebase_auth/firebase_auth.dart';
-
-class LoginPage extends StatefulWidget {
+class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => LoginViewModel(),
+      child: const _LoginView(),
+    );
+  }
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginView extends StatelessWidget {
+  const _LoginView();
   // Controllers for the text fields
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  // Global key to validate the form
-  final _formKey = GlobalKey<FormState>();
-
-  // State to manage the loading indicator
-  bool _isLoading = false;
-  bool _isPasswordObscured = true;
-
-  @override
-  void dispose() {
-    // Clean up the controllers when the widget is disposed
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 
   Future<void> _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
@@ -39,66 +27,10 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  /// Handles the entire login process with Firebase Auth
-  Future<void> _login() async {
-    // First, validate the form inputs
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return; // If form is not valid, do nothing.
-    }
-
-    // Show a loading indicator
-    setState(() => _isLoading = true);
-
-    try {
-      // Use Firebase Auth to sign in
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      // On successful login, navigate to the dashboard
-      if (mounted) {
-        context.go('/dashboard');
-      }
-    } on FirebaseAuthException catch (e) {
-      // Handle specific Firebase authentication errors
-      String message = 'An error occurred. Please check your credentials.';
-      if (e.code == 'user-not-found') {
-        message = 'No user found for that email.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Wrong password provided for that user.';
-      } else if (e.code == 'invalid-credential') {
-        message = 'Invalid credentials. Please try again.';
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(message),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } catch (e) {
-      // Handle any other generic errors
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An unexpected error occurred: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    } finally {
-      // ALWAYS ensure the loading indicator is turned off
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final viewModel = context.read<LoginViewModel>();
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -133,7 +65,7 @@ class _LoginPageState extends State<LoginPage> {
                 padding: const EdgeInsets.all(24.0),
                 // Wrap the Column with a Form widget
                 child: Form(
-                  key: _formKey,
+                  key: viewModel.formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -143,8 +75,9 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
-                        controller: _emailController, // Assign controller
-                        decoration: const InputDecoration(
+                        controller:
+                            viewModel.emailController, // Assign controller
+                        decoration: InputDecoration(
                           labelText: 'Email',
                           border: OutlineInputBorder(),
                         ),
@@ -166,21 +99,22 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
-                        controller: _passwordController, // Assign controller
-                        obscureText: _isPasswordObscured,
+                        controller:
+                            viewModel.passwordController, // Assign controller
+                        obscureText: context
+                            .watch<LoginViewModel>()
+                            .isPasswordObscured,
                         decoration: InputDecoration(
                           labelText: 'Password',
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _isPasswordObscured
+                              context.watch<LoginViewModel>().isPasswordObscured
                                   ? Icons.visibility_off
                                   : Icons.visibility,
                             ),
                             onPressed: () {
-                              setState(() {
-                                _isPasswordObscured = !_isPasswordObscured;
-                              });
+                              viewModel.togglePasswordVisibility();
                             },
                           ),
                         ),
@@ -204,9 +138,33 @@ class _LoginPageState extends State<LoginPage> {
                               borderRadius: BorderRadius.circular(8.0),
                             ),
                           ),
-                          // Disable button when loading, otherwise call _login
-                          onPressed: _isLoading ? null : _login,
-                          child: _isLoading
+                          onPressed: context.watch<LoginViewModel>().isLoading
+                              ? null
+                              : () async {
+                                  final success = await context
+                                      .read<LoginViewModel>()
+                                      .login();
+
+                                  if (success && context.mounted) {
+                                    context.go('/dashboard');
+                                  } else if (context.mounted) {
+                                    final errorMessage = context
+                                        .read<LoginViewModel>()
+                                        .errorMessage;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          errorMessage ??
+                                              'An unknown error occurred.',
+                                        ),
+                                        backgroundColor: Theme.of(
+                                          context,
+                                        ).colorScheme.error,
+                                      ),
+                                    );
+                                  }
+                                },
+                          child: context.watch<LoginViewModel>().isLoading
                               ? const SizedBox(
                                   height: 24,
                                   width: 24,

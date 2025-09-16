@@ -1,12 +1,15 @@
 import 'package:athr/firebase_options.dart';
+import 'package:athr/app/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'pages/login_page.dart';
-import 'pages/signup_page.dart';
-import 'pages/dashboard_page.dart';
-import 'pages/admin_page.dart';
+import 'package:athr/core/locator.dart';
+import 'package:athr/core/services/firebase_service.dart';
+import 'features/auth/login_page.dart';
+import 'features/auth/signup_page.dart';
+import 'features/dashboard/dashboard_page.dart';
+import 'features/admin/admin_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,25 +19,45 @@ void main() async {
       '6LdynMorAAAAAPo2PAi3G5s3IHz2Iqpw2R2TnzdJ',
     ),
   );
+  setupLocator();
   runApp(AthrApp());
 }
 
 class AthrApp extends StatelessWidget {
-  final GoRouter _router = GoRouter(
+  AthrApp({super.key});
+
+  final FirebaseService _firebaseService = locator<FirebaseService>();
+
+  late final GoRouter _router = GoRouter(
     initialLocation: '/login',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const LandingRedirect()),
+      GoRoute(path: '/', builder: (context, state) => DashboardPage()),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(path: '/signup', builder: (context, state) => const SignupPage()),
-      GoRoute(
-        path: '/dashboard',
-        builder: (context, state) => const DashboardPage(),
-      ),
-      GoRoute(path: '/admin', builder: (context, state) => const AdminPage()),
+      GoRoute(path: '/dashboard', builder: (context, state) => DashboardPage()),
+      GoRoute(path: '/admin', builder: (context, state) => AdminPage()),
     ],
-  );
+    redirect: (BuildContext context, GoRouterState state) {
+      final bool loggedIn = _firebaseService.currentUser != null;
+      final bool onLoginPage = state.matchedLocation == '/login';
+      final bool onSignupPage = state.matchedLocation == '/signup';
 
-  AthrApp({super.key});
+      // If not logged in and not on an auth route, redirect to login
+      if (!loggedIn && !onLoginPage && !onSignupPage) {
+        return '/login';
+      }
+
+      // If logged in and on the login page, redirect to dashboard.
+      // The signup page is now accessible even when logged in.
+      if (loggedIn && onLoginPage) {
+        return '/dashboard';
+      }
+
+      // No redirect needed
+      return null;
+    },
+    refreshListenable: GoRouterRefreshStream(_firebaseService.authStateChanges),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -42,60 +65,15 @@ class AthrApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Athr',
       routerConfig: _router,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF04192a),
-        primaryColor: const Color(0xFF17efdf),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF17efdf),
-          secondary: Color(0xFF17efdf),
-          background: Color(0xFF04192a),
-          surface: Color(0xFF0d263a),
-          onPrimary: Color(0xFF04192a),
-          onSecondary: Color(0xFF04192a),
-          onBackground: Color(0xFFe9ecef),
-          onSurface: Color(0xFFe9ecef),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0d263a),
-          foregroundColor: Color(0xFFe9ecef),
-        ),
-        cardTheme: const CardThemeData(color: Color(0xFF0d263a), elevation: 4),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Color(0xFFe9ecef)),
-          bodyMedium: TextStyle(color: Color(0xFFa0b3c4)),
-          headlineMedium: TextStyle(color: Color(0xFFe9ecef)),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF17efdf),
-            foregroundColor: const Color(0xFF04192a),
-          ),
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: const Color(0xFF17efdf)),
-        ),
-        inputDecorationTheme: const InputDecorationTheme(
-          labelStyle: TextStyle(color: Color(0xFFa0b3c4)),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFFa0b3c4)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF17efdf)),
-          ),
-        ),
-      ),
+      theme: AppTheme.darkTheme,
     );
   }
 }
 
-class LandingRedirect extends StatelessWidget {
-  const LandingRedirect({super.key});
-  @override
-  Widget build(BuildContext context) {
-    // If someone hits /app/ root, redirect to login or dashboard depending on auth
-    Future.microtask(() => context.go('/login'));
-    return const SizedBox.shrink();
+/// A stream-based [ChangeNotifier] for [GoRouter].
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    stream.asBroadcastStream().listen((_) => notifyListeners());
   }
 }

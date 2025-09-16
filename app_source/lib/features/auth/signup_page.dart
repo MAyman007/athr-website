@@ -2,157 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+import 'signup_viewmodel.dart';
 
-class SignupPage extends StatefulWidget {
+class SignupPage extends StatelessWidget {
   const SignupPage({super.key});
 
   @override
-  State<SignupPage> createState() => _SignupPageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => SignupViewModel(),
+      child: const _SignupView(),
+    );
+  }
 }
 
-class _SignupPageState extends State<SignupPage> {
-  int _currentStep = 0;
-  bool _isLoading = false;
-
-  // Form Keys
-  final _step1Key = GlobalKey<FormState>();
-  final _step2Key = GlobalKey<FormState>();
-  final _step3Key = GlobalKey<FormState>();
-  final _step4Key = GlobalKey<FormState>();
-
-  // Step 1: Account Details
-  final _organizationNameController = TextEditingController();
-  final _fullNameController = TextEditingController();
-  final _workEmailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  double _passwordStrength = 0;
-  String _passwordStrengthText = 'Weak';
-  bool _isPasswordObscured = true;
-
-  // Step 2: Primary Assets
-  final _domainController = TextEditingController();
-  final List<String> _domains = [];
-
-  // Step 3: High-Value Assets
-  final _ipRangeController = TextEditingController();
-  final List<String> _ipRanges = [];
-  final _keywordController = TextEditingController();
-  final List<String> _keywords = [];
-
-  // Step 4: Alerts
-  final _primaryEmailController = TextEditingController();
-  final _secondaryEmailController = TextEditingController();
-  String _alertFrequency = 'Daily Digest';
-
-  // Regex for validation
-  // More robust domain regex: disallows leading/trailing hyphens and IP addresses.
-  final _domainRegex = RegExp(
-    r'^(?!-)(?!.*--)[a-zA-Z0-9-]{1,63}(?<!-)(\.[a-zA-Z]{2,})+$',
-  );
-  // Stricter CIDR regex.
-  final _cidrRegex = RegExp(
-    r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/([0-9]|[1-2][0-9]|3[0-2]))?$',
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _passwordController.addListener(_updatePasswordStrength);
-    // When the email in step 1 changes, update the initial value in step 4
-    _workEmailController.addListener(() {
-      if (mounted) {
-        setState(() {
-          _primaryEmailController.text = _workEmailController.text;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _organizationNameController.dispose();
-    _fullNameController.dispose();
-    _workEmailController.dispose();
-    _passwordController.dispose();
-    _domainController.dispose();
-    _ipRangeController.dispose();
-    _keywordController.dispose();
-    _primaryEmailController.dispose();
-    _secondaryEmailController.dispose();
-    super.dispose();
-  }
-
-  void _updatePasswordStrength() {
-    String password = _passwordController.text;
-    double strength = 0;
-    String strengthText = 'Weak';
-
-    if (password.isEmpty) {
-      strength = 0;
-      strengthText = 'Weak';
-    } else {
-      if (password.length >= 8) strength += 0.2;
-      if (RegExp(r'[A-Z]').hasMatch(password)) strength += 0.2;
-      if (RegExp(r'[a-z]').hasMatch(password)) strength += 0.2;
-      if (RegExp(r'[0-9]').hasMatch(password)) strength += 0.2;
-      if (RegExp(r'[^A-Za-z0-9]').hasMatch(password)) strength += 0.2;
-    }
-
-    if (strength >= 0.9) {
-      // Needs all 5 conditions to be strong
-      strengthText = 'Strong';
-    } else if (strength > 0.5) {
-      strengthText = 'Medium';
-    }
-
-    setState(() {
-      _passwordStrength = strength.clamp(0.0, 1.0);
-      _passwordStrengthText = strengthText;
-    });
-  }
-
-  void _addDomain() => _addItemToList(_domainController, _domains);
-  void _removeDomain(String domain) => setState(() => _domains.remove(domain));
-
-  void _addIpRange() => _addItemToList(_ipRangeController, _ipRanges);
-  void _removeIpRange(String ipRange) =>
-      setState(() => _ipRanges.remove(ipRange));
-
-  void _addKeyword() => _addItemToList(_keywordController, _keywords);
-  void _removeKeyword(String keyword) =>
-      setState(() => _keywords.remove(keyword));
-
-  void _addItemToList(TextEditingController controller, List<String> list) {
-    final text = controller.text.trim();
-    final formState = _getFormKeyForStep(_currentStep)?.currentState;
-
-    // Trigger validation on the form field
-    if (formState?.validate() ?? false) {
-      if (text.isNotEmpty && !list.contains(text)) {
-        setState(() {
-          list.add(text);
-          controller.clear();
-        });
-      }
-    }
-  }
-
-  GlobalKey<FormState>? _getFormKeyForStep(int step) {
-    switch (step) {
-      case 0:
-        return _step1Key;
-      case 1:
-        return _step2Key;
-      case 2:
-        return _step3Key;
-      case 3:
-        return _step4Key;
-      default:
-        return null;
-    }
-  }
+class _SignupView extends StatelessWidget {
+  const _SignupView();
 
   Future<void> _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
@@ -161,130 +27,11 @@ class _SignupPageState extends State<SignupPage> {
     }
   }
 
-  void _onStepContinue() {
-    bool isStepValid = false;
-    switch (_currentStep) {
-      case 0:
-        isStepValid = _step1Key.currentState?.validate() ?? false;
-        break;
-      case 1:
-        isStepValid = _step2Key.currentState?.validate() ?? false;
-        if (_domains.isEmpty) {
-          isStepValid = false;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please add at least one domain.')),
-          );
-        }
-        break;
-      case 2:
-        isStepValid = _step3Key.currentState?.validate() ?? false;
-        break;
-      case 3:
-        isStepValid = _step4Key.currentState?.validate() ?? false;
-        break;
-    }
-
-    if (isStepValid) {
-      if (_currentStep < 3) {
-        setState(() => _currentStep += 1);
-      } else {
-        _finishOnboarding();
-      }
-    }
-  }
-
-  void _onStepCancel() {
-    if (_currentStep > 0) setState(() => _currentStep -= 1);
-  }
-
-  Future<void> _finishOnboarding() async {
-    if (!(_step4Key.currentState?.validate() ?? false)) {
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      final UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _workEmailController.text.trim(),
-            password: _passwordController.text,
-          );
-
-      final User? user = userCredential.user;
-
-      if (user == null) {
-        throw Exception('User creation failed, please try again.');
-      }
-
-      await user.updateDisplayName(_fullNameController.text.trim());
-      await _createOrganizationAndUserData(user);
-
-      if (mounted) {
-        context.go('/dashboard');
-      }
-    } on FirebaseAuthException catch (e) {
-      String message;
-      if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'An account already exists for that email.';
-      } else {
-        message = 'An error occurred. Please check your details.';
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('An unexpected error occurred: ${e.toString()}'),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _createOrganizationAndUserData(User user) async {
-    final firestore = FirebaseFirestore.instance;
-    final orgRef = firestore.collection('organizations').doc();
-    final userRef = firestore.collection('users').doc(user.uid);
-    final batch = firestore.batch();
-
-    batch.set(orgRef, {
-      'name': _organizationNameController.text.trim(),
-      'domains': _domains,
-      'ipRanges': _ipRanges,
-      'keywords': _keywords,
-      'createdBy': user.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    batch.set(userRef, {
-      'orgId': orgRef.id,
-      'email': user.email,
-      'fullName': _fullNameController.text.trim(),
-      'role': 'admin',
-      'settings': {
-        'primaryNotificationEmail': _primaryEmailController.text.trim(),
-        'secondaryNotificationEmail': _secondaryEmailController.text.trim(),
-        'alertFrequency': _alertFrequency,
-      },
-    });
-
-    await batch.commit();
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    final viewModel = context.watch<SignupViewModel>();
+
+    if (viewModel.isLoading) {
       return const Scaffold(
         body: Center(
           child: Column(
@@ -331,9 +78,32 @@ class _SignupPageState extends State<SignupPage> {
                   constraints: const BoxConstraints(maxWidth: 800),
                   child: Stepper(
                     type: StepperType.vertical,
-                    currentStep: _currentStep,
-                    onStepContinue: _onStepContinue,
-                    onStepCancel: _onStepCancel,
+                    currentStep: viewModel.currentStep,
+                    onStepContinue: () async {
+                      final isLastStep = viewModel.currentStep == 3;
+                      viewModel.onStepContinue();
+
+                      if (viewModel.errorMessage != null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(viewModel.errorMessage!)),
+                        );
+                        return;
+                      }
+
+                      if (isLastStep) {
+                        final success = await context
+                            .read<SignupViewModel>()
+                            .finishOnboarding();
+                        if (success && context.mounted) {
+                          context.go('/dashboard');
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(viewModel.errorMessage!)),
+                          );
+                        }
+                      }
+                    },
+                    onStepCancel: viewModel.onStepCancel,
                     controlsBuilder: (context, details) {
                       return Padding(
                         padding: const EdgeInsets.only(top: 16.0),
@@ -342,10 +112,12 @@ class _SignupPageState extends State<SignupPage> {
                             ElevatedButton(
                               onPressed: details.onStepContinue,
                               child: Text(
-                                _currentStep == 3 ? 'Finish' : 'Continue',
+                                viewModel.currentStep == 3
+                                    ? 'Finish'
+                                    : 'Continue',
                               ),
                             ),
-                            if (_currentStep > 0)
+                            if (viewModel.currentStep > 0)
                               TextButton(
                                 onPressed: details.onStepCancel,
                                 child: const Text('Back'),
@@ -354,7 +126,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                       );
                     },
-                    steps: _getSteps(),
+                    steps: _getSteps(context),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -373,18 +145,20 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  List<Step> _getSteps() {
+  List<Step> _getSteps(BuildContext context) {
+    final viewModel = context.read<SignupViewModel>();
+
     return [
       Step(
         title: const Text('Create Your Secure Account'),
         content: Form(
-          key: _step1Key,
+          key: viewModel.step1Key,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 5),
               TextFormField(
-                controller: _organizationNameController,
+                controller: viewModel.organizationNameController,
                 decoration: const InputDecoration(
                   labelText: 'Organization Name',
                   prefixIcon: Icon(Icons.business),
@@ -402,7 +176,7 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _fullNameController,
+                controller: viewModel.fullNameController,
                 decoration: const InputDecoration(
                   labelText: 'Your Full Name',
                   prefixIcon: Icon(Icons.person),
@@ -420,7 +194,7 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _workEmailController,
+                controller: viewModel.workEmailController,
                 decoration: const InputDecoration(
                   labelText: 'Your Work Email',
                   helperText: 'Please use your professional work email.',
@@ -443,23 +217,19 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _passwordController,
-                obscureText: _isPasswordObscured,
+                controller: viewModel.passwordController,
+                obscureText: viewModel.isPasswordObscured,
                 decoration: InputDecoration(
                   labelText: 'Password',
                   prefixIcon: const Icon(Icons.lock),
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordObscured
+                      viewModel.isPasswordObscured
                           ? Icons.visibility_off
                           : Icons.visibility,
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordObscured = !_isPasswordObscured;
-                      });
-                    },
+                    onPressed: viewModel.togglePasswordVisibility,
                   ),
                 ),
                 validator: (value) {
@@ -492,18 +262,18 @@ class _SignupPageState extends State<SignupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   LinearProgressIndicator(
-                    value: _passwordStrength,
+                    value: viewModel.passwordStrength,
                     backgroundColor: Colors.grey[300],
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      _passwordStrength > 0.8
+                      viewModel.passwordStrength > 0.8
                           ? Colors.green
-                          : _passwordStrength > 0.5
+                          : viewModel.passwordStrength > 0.5
                           ? Colors.orange
                           : Colors.red,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text('Password Strength: $_passwordStrengthText'),
+                  Text('Password Strength: ${viewModel.passwordStrengthText}'),
                 ],
               ),
               const SizedBox(height: 24),
@@ -540,13 +310,15 @@ class _SignupPageState extends State<SignupPage> {
             ],
           ),
         ),
-        isActive: _currentStep >= 0,
-        state: _currentStep > 0 ? StepState.complete : StepState.indexed,
+        isActive: viewModel.currentStep >= 0,
+        state: viewModel.currentStep > 0
+            ? StepState.complete
+            : StepState.indexed,
       ),
       Step(
         title: const Text('Define Your Primary Assets'),
         content: Form(
-          key: _step2Key,
+          key: viewModel.step2Key,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -555,19 +327,19 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 16),
               _ChipInputSection(
-                controller: _domainController,
-                items: _domains,
+                controller: viewModel.domainController,
+                items: viewModel.domains,
                 labelText: 'Domain',
                 hintText: 'e.g., your-company.com',
-                onAdd: _addDomain,
-                onRemove: _removeDomain,
+                onAdd: viewModel.addDomain,
+                onRemove: viewModel.removeDomain,
                 validator: (value) {
                   if (value == null || value.isEmpty) return null;
                   final trimmedValue = value.trim();
                   if (trimmedValue.length > 100) {
                     return 'Domain cannot exceed 100 characters';
                   }
-                  if (!_domainRegex.hasMatch(trimmedValue)) {
+                  if (!viewModel.domainRegex.hasMatch(trimmedValue)) {
                     return 'Invalid domain format';
                   }
                   return null;
@@ -576,13 +348,15 @@ class _SignupPageState extends State<SignupPage> {
             ],
           ),
         ),
-        isActive: _currentStep >= 1,
-        state: _currentStep > 1 ? StepState.complete : StepState.indexed,
+        isActive: viewModel.currentStep >= 1,
+        state: viewModel.currentStep > 1
+            ? StepState.complete
+            : StepState.indexed,
       ),
       Step(
         title: const Text('Add High-Value Assets'),
         content: Form(
-          key: _step3Key,
+          key: viewModel.step3Key,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -591,23 +365,23 @@ class _SignupPageState extends State<SignupPage> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text(
-                'Monitor for mentions in threat intelligence feeds, malware logs, and public vulnerability scans.',
+                'Monitor for mentions in threat intelligence feeds, malware logs, and public vulnerability scans. At least one IP range is required.',
               ),
               const SizedBox(height: 16),
               _ChipInputSection(
-                controller: _ipRangeController,
-                items: _ipRanges,
+                controller: viewModel.ipRangeController,
+                items: viewModel.ipRanges,
                 labelText: 'IP Range (CIDR notation)',
                 hintText: 'e.g., 192.168.1.0/24',
-                onAdd: _addIpRange,
-                onRemove: _removeIpRange,
+                onAdd: viewModel.addIpRange,
+                onRemove: viewModel.removeIpRange,
                 validator: (value) {
                   if (value == null || value.isEmpty) return null;
                   final trimmedValue = value.trim();
                   if (trimmedValue.length > 45) {
                     return 'IP Range cannot exceed 45 characters';
                   }
-                  if (!_cidrRegex.hasMatch(trimmedValue)) {
+                  if (!viewModel.cidrRegex.hasMatch(trimmedValue)) {
                     return 'Invalid CIDR notation';
                   }
                   return null;
@@ -615,7 +389,7 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 24),
               const Text(
-                'Brand & Project Keywords',
+                'Brand & Project Keywords (Optional)',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text(
@@ -623,12 +397,12 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 16),
               _ChipInputSection(
-                controller: _keywordController,
-                items: _keywords,
+                controller: viewModel.keywordController,
+                items: viewModel.keywords,
                 labelText: 'Keyword',
                 hintText: 'e.g., Project-Chimera',
-                onAdd: _addKeyword,
-                onRemove: _removeKeyword,
+                onAdd: viewModel.addKeyword,
+                onRemove: viewModel.removeKeyword,
                 validator: (value) {
                   final trimmedValue = value?.trim() ?? '';
                   if (trimmedValue.length > 100) {
@@ -640,20 +414,22 @@ class _SignupPageState extends State<SignupPage> {
             ],
           ),
         ),
-        isActive: _currentStep >= 2,
-        state: _currentStep > 2 ? StepState.complete : StepState.indexed,
+        isActive: viewModel.currentStep >= 2,
+        state: viewModel.currentStep > 2
+            ? StepState.complete
+            : StepState.indexed,
       ),
       Step(
         title: const Text('Configure Your Alerts'),
         content: Form(
-          key: _step4Key,
+          key: viewModel.step4Key,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Where should we send critical alerts?'),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _primaryEmailController,
+                controller: viewModel.primaryEmailController,
                 decoration: const InputDecoration(
                   labelText: 'Primary Notification Email',
                   prefixIcon: Icon(Icons.email),
@@ -676,7 +452,7 @@ class _SignupPageState extends State<SignupPage> {
               ),
               const SizedBox(height: 16),
               TextFormField(
-                controller: _secondaryEmailController,
+                controller: viewModel.secondaryEmailController,
                 decoration: const InputDecoration(
                   labelText: 'Optional Secondary Email',
                   prefixIcon: Icon(Icons.group),
@@ -703,28 +479,30 @@ class _SignupPageState extends State<SignupPage> {
                 title: const Text('Instant'),
                 subtitle: const Text('Receive alerts as they happen.'),
                 value: 'Instant',
-                groupValue: _alertFrequency,
-                onChanged: (value) => setState(() => _alertFrequency = value!),
+                groupValue: viewModel.alertFrequency,
+                onChanged: (value) => viewModel.setAlertFrequency(value!),
               ),
               RadioListTile<String>(
                 title: const Text('Daily Digest'),
                 subtitle: const Text('A summary of all alerts once a day.'),
                 value: 'Daily Digest',
-                groupValue: _alertFrequency,
-                onChanged: (value) => setState(() => _alertFrequency = value!),
+                groupValue: viewModel.alertFrequency,
+                onChanged: (value) => viewModel.setAlertFrequency(value!),
               ),
               RadioListTile<String>(
                 title: const Text('Weekly Summary'),
                 subtitle: const Text('A single report summarizing the week.'),
                 value: 'Weekly Summary',
-                groupValue: _alertFrequency,
-                onChanged: (value) => setState(() => _alertFrequency = value!),
+                groupValue: viewModel.alertFrequency,
+                onChanged: (value) => viewModel.setAlertFrequency(value!),
               ),
             ],
           ),
         ),
-        isActive: _currentStep >= 3,
-        state: _currentStep >= 3 ? StepState.indexed : StepState.disabled,
+        isActive: viewModel.currentStep >= 3,
+        state: viewModel.currentStep >= 3
+            ? StepState.indexed
+            : StepState.disabled,
       ),
     ];
   }
