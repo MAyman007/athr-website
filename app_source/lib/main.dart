@@ -7,6 +7,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:athr/core/locator.dart';
 import 'package:athr/core/services/firebase_service.dart';
 import 'features/auth/login_page.dart';
+import 'features/auth/gatekeeper_page.dart';
 import 'features/auth/signup_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 import 'features/admin/admin_page.dart';
@@ -31,9 +32,15 @@ class AthrApp extends StatelessWidget {
   late final GoRouter _router = GoRouter(
     initialLocation: '/login',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => DashboardPage()),
-      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-      GoRoute(path: '/signup', builder: (context, state) => const SignupPage()),
+      GoRoute(path: '/', redirect: (_, __) => '/login'),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const GatekeeperPage(child: LoginPage()),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (context, state) => const GatekeeperPage(child: SignupPage()),
+      ),
       GoRoute(path: '/dashboard', builder: (context, state) => DashboardPage()),
       GoRoute(path: '/admin', builder: (context, state) => AdminPage()),
     ],
