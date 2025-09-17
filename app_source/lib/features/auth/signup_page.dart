@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'signup_viewmodel.dart';
@@ -19,13 +18,6 @@ class SignupPage extends StatelessWidget {
 
 class _SignupView extends StatelessWidget {
   const _SignupView();
-
-  Future<void> _launchURL(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri)) {
-      throw 'Could not launch $url';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,9 +40,28 @@ class _SignupView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Athr',
-          style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () => viewModel.launchURL("../", inApp: true),
+              child: const Text(
+                'Athr',
+                style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              'Onboarding',
+              style: TextStyle(
+                fontSize: 28,
+                color: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.color?.withOpacity(0.7),
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -66,78 +77,77 @@ class _SignupView extends StatelessWidget {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const Text(
-                  'Athr Onboarding',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
-                ),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
-                  child: Stepper(
-                    type: StepperType.vertical,
-                    currentStep: viewModel.currentStep,
-                    onStepContinue: () async {
-                      final isLastStep = viewModel.currentStep == 3;
-                      viewModel.onStepContinue();
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Stepper(
+                      type: StepperType.vertical,
+                      currentStep: viewModel.currentStep,
+                      onStepContinue: () async {
+                        final isLastStep = viewModel.currentStep == 3;
+                        viewModel.onStepContinue();
 
-                      if (viewModel.errorMessage != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(viewModel.errorMessage!)),
-                        );
-                        return;
-                      }
-
-                      if (isLastStep) {
-                        final success = await context
-                            .read<SignupViewModel>()
-                            .finishOnboarding();
-                        if (success && context.mounted) {
-                          context.go('/dashboard');
-                        } else if (context.mounted) {
+                        if (viewModel.errorMessage != null && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(viewModel.errorMessage!)),
                           );
+                          return;
                         }
-                      }
-                    },
-                    onStepCancel: viewModel.onStepCancel,
-                    controlsBuilder: (context, details) {
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: Row(
-                          children: <Widget>[
-                            ElevatedButton(
-                              onPressed: details.onStepContinue,
-                              child: Text(
-                                viewModel.currentStep == 3
-                                    ? 'Finish'
-                                    : 'Continue',
+
+                        if (isLastStep) {
+                          final success = await context
+                              .read<SignupViewModel>()
+                              .finishOnboarding();
+                          if (success && context.mounted) {
+                            context.go('/dashboard');
+                          } else if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(viewModel.errorMessage!)),
+                            );
+                          }
+                        }
+                      },
+                      onStepCancel: viewModel.onStepCancel,
+                      controlsBuilder: (context, details) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 16.0),
+                          child: Row(
+                            children: <Widget>[
+                              ElevatedButton(
+                                onPressed: details.onStepContinue,
+                                child: Text(
+                                  viewModel.currentStep == 3
+                                      ? 'Finish'
+                                      : 'Continue',
+                                ),
                               ),
-                            ),
-                            if (viewModel.currentStep > 0)
-                              TextButton(
-                                onPressed: details.onStepCancel,
-                                child: const Text('Back'),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                    steps: _getSteps(context),
+                              if (viewModel.currentStep > 0)
+                                TextButton(
+                                  onPressed: details.onStepCancel,
+                                  child: const Text('Back'),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                      steps: _getSteps(context),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: const Text(
-                    'Already have an organization profile? Log in',
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: TextButton(
+                      onPressed: () => context.go('/login'),
+                      child: const Text(
+                        'Already have an organization profile? Log in',
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -156,7 +166,7 @@ class _SignupView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 5),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: viewModel.organizationNameController,
                 decoration: const InputDecoration(
@@ -174,7 +184,7 @@ class _SignupView extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: viewModel.fullNameController,
                 decoration: const InputDecoration(
@@ -192,7 +202,7 @@ class _SignupView extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: viewModel.workEmailController,
                 decoration: const InputDecoration(
@@ -215,7 +225,7 @@ class _SignupView extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: viewModel.passwordController,
                 obscureText: viewModel.isPasswordObscured,
@@ -276,7 +286,7 @@ class _SignupView extends StatelessWidget {
                   Text('Password Strength: ${viewModel.passwordStrengthText}'),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 24.0),
               RichText(
                 text: TextSpan(
                   style: Theme.of(context).textTheme.bodySmall,
@@ -291,7 +301,8 @@ class _SignupView extends StatelessWidget {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => _launchURL('../terms-of-service'),
+                        ..onTap = () =>
+                            viewModel.launchURL('../terms-of-service'),
                     ),
                     const TextSpan(text: ' and '),
                     TextSpan(
@@ -301,7 +312,8 @@ class _SignupView extends StatelessWidget {
                         decoration: TextDecoration.underline,
                       ),
                       recognizer: TapGestureRecognizer()
-                        ..onTap = () => _launchURL('../privacy-policy'),
+                        ..onTap = () =>
+                            viewModel.launchURL('../privacy-policy'),
                     ),
                     const TextSpan(text: '.'),
                   ],
@@ -325,7 +337,7 @@ class _SignupView extends StatelessWidget {
               const Text(
                 'Enter the domains your organization owns. Athr will monitor for leaked credentials, code, and brand impersonation related to these domains.',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               _ChipInputSection(
                 controller: viewModel.domainController,
                 items: viewModel.domains,
@@ -361,13 +373,13 @@ class _SignupView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'IP Ranges',
+                'IP Ranges (Optional)',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text(
-                'Monitor for mentions in threat intelligence feeds, malware logs, and public vulnerability scans. At least one IP range is required.',
+                'Monitor for mentions in threat intelligence feeds, malware logs, and public vulnerability scans.',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               _ChipInputSection(
                 controller: viewModel.ipRangeController,
                 items: viewModel.ipRanges,
@@ -387,7 +399,7 @@ class _SignupView extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 24.0),
               const Text(
                 'Brand & Project Keywords (Optional)',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -395,7 +407,7 @@ class _SignupView extends StatelessWidget {
               const Text(
                 'Track mentions of internal project names or brands on code repositories, paste sites, and forums.',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               _ChipInputSection(
                 controller: viewModel.keywordController,
                 items: viewModel.keywords,
@@ -427,7 +439,7 @@ class _SignupView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Where should we send critical alerts?'),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: viewModel.primaryEmailController,
                 decoration: const InputDecoration(
@@ -450,7 +462,7 @@ class _SignupView extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               TextFormField(
                 controller: viewModel.secondaryEmailController,
                 decoration: const InputDecoration(
@@ -470,7 +482,7 @@ class _SignupView extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 24.0),
               const Text(
                 'Set frequency for non-critical summary reports.',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -548,7 +560,7 @@ class _ChipInputSection extends StatelessWidget {
                 onFieldSubmitted: (_) => onAdd(),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 8.0),
             IconButton(
               icon: const Icon(Icons.add_circle, size: 30),
               onPressed: onAdd,

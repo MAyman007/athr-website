@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import 'login_viewmodel.dart';
 
@@ -18,14 +17,6 @@ class LoginPage extends StatelessWidget {
 
 class _LoginView extends StatelessWidget {
   const _LoginView();
-  // Controllers for the text fields
-
-  Future<void> _launchURL(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri, webOnlyWindowName: '_self')) {
-      throw 'Could not launch $url';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +26,7 @@ class _LoginView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: GestureDetector(
-          onTap: () => _launchURL("../"),
+          onTap: () => viewModel.launchURL("../"),
           child: const Text(
             'Athr',
             style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),

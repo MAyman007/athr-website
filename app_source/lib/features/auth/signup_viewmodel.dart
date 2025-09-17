@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:athr/core/services/firebase_service.dart';
 import 'package:athr/core/locator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SignupViewModel extends ChangeNotifier {
   final FirebaseService _firebaseService = locator<FirebaseService>();
@@ -164,10 +165,6 @@ class SignupViewModel extends ChangeNotifier {
         break;
       case 2:
         isStepValid = step3Key.currentState?.validate() ?? false;
-        if (_ipRanges.isEmpty) {
-          isStepValid = false;
-          _errorMessage = 'Please add at least one IP range.';
-        }
         break;
       case 3:
         isStepValid = step4Key.currentState?.validate() ?? false;
@@ -240,6 +237,13 @@ class SignupViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<void> launchURL(String url, {bool inApp = false}) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, webOnlyWindowName: inApp ? '_self' : '_blank')) {
+      _errorMessage = 'Could not launch $url';
     }
   }
 }

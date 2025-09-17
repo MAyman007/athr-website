@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:athr/core/services/firebase_service.dart';
 import 'package:athr/core/locator.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final FirebaseService _firebaseService = locator<FirebaseService>();
@@ -73,5 +74,12 @@ class LoginViewModel extends ChangeNotifier {
   void clearErrorMessage() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  Future<void> launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, webOnlyWindowName: '_self')) {
+      throw 'Could not launch $url';
+    }
   }
 }
