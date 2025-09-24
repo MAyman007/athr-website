@@ -136,7 +136,7 @@ class _SignupView extends StatelessWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(10.0),
                     child: TextButton(
                       onPressed: () => context.go('/login'),
                       child: const Text(
