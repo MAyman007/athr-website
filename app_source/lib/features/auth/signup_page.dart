@@ -40,15 +40,13 @@ class _SignupView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 100.0,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             GestureDetector(
-              onTap: () => viewModel.launchURL("../", inApp: true),
-              child: const Text(
-                'Athr',
-                style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
-              ),
+              onTap: () => viewModel.launchURL('/', inApp: true),
+              child: Image.asset('assets/athr_logo.png', height: 80),
             ),
             const SizedBox(width: 16),
             Text(
