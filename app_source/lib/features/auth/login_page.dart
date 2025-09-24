@@ -18,6 +18,23 @@ class LoginPage extends StatelessWidget {
 class _LoginView extends StatelessWidget {
   const _LoginView();
 
+  Future<void> _login(BuildContext context) async {
+    if (context.read<LoginViewModel>().isLoading) return;
+    final success = await context.read<LoginViewModel>().login();
+
+    if (success && context.mounted) {
+      context.go('/dashboard');
+    } else if (context.mounted) {
+      final errorMessage = context.read<LoginViewModel>().errorMessage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage ?? 'An unknown error occurred.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = context.read<LoginViewModel>();
@@ -85,6 +102,7 @@ class _LoginView extends StatelessWidget {
                           return null;
                         },
                         autovalidateMode: AutovalidateMode.onUserInteraction,
+                        onFieldSubmitted: (_) => _login(context),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -116,43 +134,15 @@ class _LoginView extends StatelessWidget {
                           }
                           return null;
                         },
+                        onFieldSubmitted: (_) => _login(context),
                       ),
                       const SizedBox(height: 24),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                          ),
                           onPressed: context.watch<LoginViewModel>().isLoading
                               ? null
-                              : () async {
-                                  final success = await context
-                                      .read<LoginViewModel>()
-                                      .login();
-
-                                  if (success && context.mounted) {
-                                    context.go('/dashboard');
-                                  } else if (context.mounted) {
-                                    final errorMessage = context
-                                        .read<LoginViewModel>()
-                                        .errorMessage;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          errorMessage ??
-                                              'An unknown error occurred.',
-                                        ),
-                                        backgroundColor: Theme.of(
-                                          context,
-                                        ).colorScheme.error,
-                                      ),
-                                    );
-                                  }
-                                },
+                              : () => _login(context),
                           child: context.watch<LoginViewModel>().isLoading
                               ? const SizedBox(
                                   height: 24,

@@ -109,7 +109,7 @@ section {
 /* --- Header & Hero --- */
 .hero {
     background-color: var(--bg-primary);
-    padding: 0.5rem 0 6rem;
+    padding: 1rem 0 3rem;
     text-align: center;
     position: relative;
     overflow: hidden;
