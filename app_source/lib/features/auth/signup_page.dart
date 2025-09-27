@@ -154,7 +154,7 @@ class _SignupView extends StatelessWidget {
   }
 
   List<Step> _getSteps(BuildContext context) {
-    final viewModel = context.read<SignupViewModel>();
+    final viewModel = context.watch<SignupViewModel>();
 
     return [
       Step(
@@ -201,27 +201,55 @@ class _SignupView extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 16.0),
-              TextFormField(
-                controller: viewModel.workEmailController,
-                decoration: const InputDecoration(
-                  labelText: 'Your Work Email',
-                  helperText: 'Please use your professional work email.',
-                  prefixIcon: Icon(Icons.email),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Please enter a valid email address';
-                  }
-                  if (value.length > 100) {
-                    return 'Email cannot exceed 100 characters';
-                  }
-                  return null;
-                },
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: viewModel.workEmailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Your Work Email',
+                        helperText: 'Please use your professional work email.',
+                        prefixIcon: Icon(Icons.email),
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                          return 'Please enter a valid email address';
+                        }
+                        if (value.length > 100) {
+                          return 'Email cannot exceed 100 characters';
+                        }
+                        if (value == viewModel.secondaryEmailController.text) {
+                          return 'Secondary email cannot be the same as the work email.';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (viewModel.isWorkEmailVerified)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Icon(Icons.check_circle, color: Colors.green),
+                    )
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: TextButton(
+                        onPressed: () => _showVerificationDialog(
+                          context,
+                          viewModel.workEmailController.text,
+                          true,
+                        ),
+                        child: const Text('Verify'),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 16.0),
               TextFormField(
@@ -438,47 +466,87 @@ class _SignupView extends StatelessWidget {
             children: [
               const Text('Where should we send critical alerts?'),
               const SizedBox(height: 16.0),
-              TextFormField(
-                controller: viewModel.primaryEmailController,
-                decoration: const InputDecoration(
-                  labelText: 'Primary Notification Email',
-                  prefixIcon: Icon(Icons.email),
-                  border: OutlineInputBorder(),
-                ),
-                readOnly: true,
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an email';
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Please enter a valid email address';
-                  }
-                  if (value.length > 100) {
-                    return 'Email cannot exceed 100 characters';
-                  }
-                  return null;
-                },
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: viewModel.primaryEmailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Primary Notification Email',
+                        prefixIcon: Icon(Icons.email),
+                        border: OutlineInputBorder(),
+                      ),
+                      readOnly: true,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter an email';
+                        }
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                          return 'Please enter a valid email address';
+                        }
+                        if (value.length > 100) {
+                          return 'Email cannot exceed 100 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
+                    child: Icon(Icons.check_circle, color: Colors.green),
+                  ),
+                ],
               ),
               const SizedBox(height: 16.0),
-              TextFormField(
-                controller: viewModel.secondaryEmailController,
-                decoration: const InputDecoration(
-                  labelText: 'Optional Secondary Email',
-                  prefixIcon: Icon(Icons.group),
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return null;
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Please enter a valid email address';
-                  }
-                  if (value.length > 100) {
-                    return 'Email cannot exceed 100 characters';
-                  }
-                  return null;
-                },
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: viewModel.secondaryEmailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Optional Secondary Email',
+                        prefixIcon: Icon(Icons.group),
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return null;
+                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                          return 'Please enter a valid email address';
+                        }
+                        if (value.length > 100) {
+                          return 'Email cannot exceed 100 characters';
+                        }
+                        if (value == viewModel.workEmailController.text) {
+                          return 'Secondary email cannot be the same as the work email.';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (viewModel.secondaryEmailController.text.isNotEmpty)
+                    if (viewModel.isSecondaryEmailVerified)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8.0),
+                        child: Icon(Icons.check_circle, color: Colors.green),
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: TextButton(
+                          onPressed: () => _showVerificationDialog(
+                            context,
+                            viewModel.secondaryEmailController.text,
+                            false,
+                          ),
+                          child: const Text('Verify'),
+                        ),
+                      ),
+                ],
               ),
               const SizedBox(height: 24.0),
               const Text(
@@ -515,6 +583,64 @@ class _SignupView extends StatelessWidget {
             : StepState.disabled,
       ),
     ];
+  }
+
+  void _showVerificationDialog(
+    BuildContext context,
+    String email,
+    bool isWorkEmail,
+  ) {
+    final viewModel = context.read<SignupViewModel>();
+    final codeController = TextEditingController();
+
+    if (email.isEmpty || !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid email first.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Verify Your Email'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('A verification code has been sent to $email.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                decoration: const InputDecoration(
+                  labelText: 'Verification Code',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Confirm'),
+              onPressed: () async {
+                if (isWorkEmail) {
+                  await viewModel.verifyWorkEmail(codeController.text);
+                } else {
+                  await viewModel.verifySecondaryEmail(codeController.text);
+                }
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 

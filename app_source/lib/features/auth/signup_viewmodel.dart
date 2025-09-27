@@ -34,6 +34,12 @@ class SignupViewModel extends ChangeNotifier {
   String get passwordStrengthText => _passwordStrengthText;
   bool _isPasswordObscured = true;
   bool get isPasswordObscured => _isPasswordObscured;
+  bool _isWorkEmailVerified = false;
+  bool get isWorkEmailVerified => _isWorkEmailVerified;
+  String? _verifiedWorkEmail;
+  bool _isSecondaryEmailVerified = false;
+  bool get isSecondaryEmailVerified => _isSecondaryEmailVerified;
+  String? _verifiedSecondaryEmail;
 
   // Step 2: Primary Assets
   final domainController = TextEditingController();
@@ -65,7 +71,36 @@ class SignupViewModel extends ChangeNotifier {
   SignupViewModel() {
     passwordController.addListener(_updatePasswordStrength);
     workEmailController.addListener(() {
+      if (_verifiedWorkEmail != null) {
+        // If the text is changed back to the verified email, restore its status.
+        if (workEmailController.text.trim() == _verifiedWorkEmail) {
+          if (!_isWorkEmailVerified) {
+            _isWorkEmailVerified = true;
+            notifyListeners();
+          }
+        } else if (_isWorkEmailVerified) {
+          // If the text is changed from the verified email, invalidate it.
+          _isWorkEmailVerified = false;
+          notifyListeners();
+        }
+      }
       primaryEmailController.text = workEmailController.text;
+      notifyListeners();
+    });
+    secondaryEmailController.addListener(() {
+      if (_verifiedSecondaryEmail != null) {
+        // If the text is changed back to the verified email, restore its status.
+        if (secondaryEmailController.text.trim() == _verifiedSecondaryEmail) {
+          if (!_isSecondaryEmailVerified) {
+            _isSecondaryEmailVerified = true;
+            notifyListeners();
+          }
+        } else if (_isSecondaryEmailVerified) {
+          // If the text is changed from the verified email, invalidate it.
+          _isSecondaryEmailVerified = false;
+          notifyListeners();
+        }
+      }
       notifyListeners();
     });
   }
@@ -151,10 +186,15 @@ class SignupViewModel extends ChangeNotifier {
   }
 
   void onStepContinue() {
+    _errorMessage = null;
     bool isStepValid = false;
     switch (_currentStep) {
       case 0:
         isStepValid = step1Key.currentState?.validate() ?? false;
+        if (isStepValid && !_isWorkEmailVerified) {
+          isStepValid = false;
+          _errorMessage = 'Please verify your work email.';
+        }
         break;
       case 1:
         isStepValid = step2Key.currentState?.validate() ?? false;
@@ -172,7 +212,6 @@ class SignupViewModel extends ChangeNotifier {
     }
 
     if (isStepValid) {
-      _errorMessage = null;
       if (_currentStep < 3) {
         _currentStep += 1;
       } else {
@@ -191,6 +230,13 @@ class SignupViewModel extends ChangeNotifier {
 
   Future<bool> finishOnboarding() async {
     if (!(step4Key.currentState?.validate() ?? false)) {
+      return false;
+    }
+
+    if (secondaryEmailController.text.trim().isNotEmpty &&
+        !_isSecondaryEmailVerified) {
+      _errorMessage = 'Please verify your secondary email.';
+      notifyListeners();
       return false;
     }
 
@@ -245,5 +291,20 @@ class SignupViewModel extends ChangeNotifier {
     if (!await launchUrl(uri, webOnlyWindowName: inApp ? '_self' : '_blank')) {
       _errorMessage = 'Could not launch $url';
     }
+  }
+
+  // Mock verification. In a real app, this would involve a backend call.
+  Future<bool> verifyWorkEmail(String code) async {
+    _isWorkEmailVerified = true;
+    _verifiedWorkEmail = workEmailController.text.trim();
+    notifyListeners();
+    return true;
+  }
+
+  Future<bool> verifySecondaryEmail(String code) async {
+    _isSecondaryEmailVerified = true;
+    _verifiedSecondaryEmail = secondaryEmailController.text.trim();
+    notifyListeners();
+    return true;
   }
 }
