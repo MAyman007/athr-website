@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'signup_viewmodel.dart';
+import 'dart:async';
 
 class SignupPage extends StatelessWidget {
   const SignupPage({super.key});
@@ -585,14 +586,16 @@ class _SignupView extends StatelessWidget {
     ];
   }
 
+  /// Shows a dialog for the user to enter their email verification code.
+  ///
+  /// This dialog includes a fake "Resend Code" button with a 60-second
+  /// cooldown to simulate a real-world verification flow.
   void _showVerificationDialog(
     BuildContext context,
     String email,
     bool isWorkEmail,
   ) {
     final viewModel = context.read<SignupViewModel>();
-    final codeController = TextEditingController();
-
     if (email.isEmpty || !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid email first.')),
@@ -602,44 +605,115 @@ class _SignupView extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Verify Your Email'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('A verification code has been sent to $email.'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: codeController,
-                decoration: const InputDecoration(
-                  labelText: 'Verification Code',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+      builder: (BuildContext dialogContext) => _VerificationDialog(
+        email: email,
+        isWorkEmail: isWorkEmail,
+        viewModel: viewModel,
+      ),
+    );
+  }
+}
+
+class _VerificationDialog extends StatefulWidget {
+  final String email;
+  final bool isWorkEmail;
+  final SignupViewModel viewModel;
+
+  const _VerificationDialog({
+    required this.email,
+    required this.isWorkEmail,
+    required this.viewModel,
+  });
+
+  @override
+  State<_VerificationDialog> createState() => _VerificationDialogState();
+}
+
+class _VerificationDialogState extends State<_VerificationDialog> {
+  final _codeController = TextEditingController();
+  Timer? _timer;
+  int _cooldownSeconds = 60;
+  bool _canResend = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCooldown();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _startCooldown() {
+    setState(() {
+      _canResend = false;
+      _cooldownSeconds = 60;
+    });
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_cooldownSeconds > 0) {
+        setState(() {
+          _cooldownSeconds--;
+        });
+      } else {
+        timer.cancel();
+        setState(() {
+          _canResend = true;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Verify Your Email'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('A verification code has been sent to ${widget.email}.'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _codeController,
+            decoration: const InputDecoration(
+              labelText: 'Verification Code',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
           ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.of(dialogContext).pop(),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _canResend ? _startCooldown : null,
+            child: Text(
+              _canResend
+                  ? 'Resend Code'
+                  : 'Resend in $_cooldownSeconds seconds',
             ),
-            ElevatedButton(
-              child: const Text('Confirm'),
-              onPressed: () async {
-                if (isWorkEmail) {
-                  await viewModel.verifyWorkEmail(codeController.text);
-                } else {
-                  await viewModel.verifySecondaryEmail(codeController.text);
-                }
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          child: const Text('Cancel'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        ElevatedButton(
+          child: const Text('Confirm'),
+          onPressed: () async {
+            final success = widget.isWorkEmail
+                ? await widget.viewModel.verifyWorkEmail(_codeController.text)
+                : await widget.viewModel.verifySecondaryEmail(
+                    _codeController.text,
+                  );
+            if (success && mounted) Navigator.of(context).pop();
+          },
+        ),
+      ],
     );
   }
 }
