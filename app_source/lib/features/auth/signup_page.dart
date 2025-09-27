@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'signup_viewmodel.dart';
+import 'package:flutter/services.dart';
 import 'dart:async';
 
 class SignupPage extends StatelessWidget {
@@ -365,25 +366,42 @@ class _SignupView extends StatelessWidget {
                 'Enter the domains your organization owns. Athr will monitor for leaked credentials, code, and brand impersonation related to these domains.',
               ),
               const SizedBox(height: 16.0),
-              _ChipInputSection(
-                controller: viewModel.domainController,
-                items: viewModel.domains,
-                labelText: 'Domain',
-                hintText: 'e.g., your-company.com',
-                onAdd: viewModel.addDomain,
-                onRemove: viewModel.removeDomain,
-                validator: (value) {
-                  if (value == null || value.isEmpty) return null;
-                  final trimmedValue = value.trim();
-                  if (trimmedValue.length > 100) {
-                    return 'Domain cannot exceed 100 characters';
-                  }
-                  if (!viewModel.domainRegex.hasMatch(trimmedValue)) {
-                    return 'Invalid domain format';
-                  }
-                  return null;
-                },
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: viewModel.domainController,
+                      decoration: const InputDecoration(
+                        labelText: 'Domain',
+                        hintText: 'e.g., your-company.com',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return null;
+                        final trimmedValue = value.trim();
+                        if (trimmedValue.length > 100) {
+                          return 'Domain cannot exceed 100 characters';
+                        }
+                        if (!viewModel.domainRegex.hasMatch(trimmedValue)) {
+                          return 'Invalid domain format';
+                        }
+                        return null;
+                      },
+                      onFieldSubmitted: (_) => viewModel.addDomain(),
+                    ),
+                  ),
+                  const SizedBox(width: 8.0),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle, size: 30),
+                    onPressed: viewModel.addDomain,
+                    color: Theme.of(context).primaryColor,
+                    tooltip: 'Add Domain',
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
+              const _DomainVerificationSection(),
             ],
           ),
         ),
@@ -776,11 +794,151 @@ class _ChipInputSection extends StatelessWidget {
                 (item) => Chip(
                   label: Text(item),
                   onDeleted: () => onRemove(item),
+                  avatar: Icon(
+                    Icons.domain,
+                    color: Theme.of(context).chipTheme.labelStyle?.color,
+                    size: 18,
+                  ),
                   deleteIcon: const Icon(Icons.cancel, size: 18),
                 ),
               )
               .toList(),
         ),
+      ],
+    );
+  }
+}
+
+class _DomainVerificationSection extends StatelessWidget {
+  const _DomainVerificationSection();
+
+  void _showDomainVerificationDialog(
+    BuildContext context,
+    DomainEntry domainEntry,
+  ) {
+    final viewModel = context.read<SignupViewModel>();
+    final token = viewModel.generateDomainVerificationToken(domainEntry.domain);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Verify Domain: ${domainEntry.domain}'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                const Text(
+                  'To verify ownership, please add the following TXT record to your DNS provider:',
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          token,
+                          style: const TextStyle(fontFamily: 'monospace'),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: token));
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied to clipboard!'),
+                            ),
+                          );
+                        },
+                        tooltip: 'Copy',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Once the record is added, click "Check" to complete verification. DNS changes may take some time to propagate.',
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            ElevatedButton(
+              child: const Text('Check'),
+              onPressed: () async {
+                // In a real app, this would trigger a backend check.
+                // Here, we just simulate success.
+                await viewModel.verifyDomain(domainEntry.domain);
+                if (dialogContext.mounted) {
+                  Navigator.of(dialogContext).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewModel = context.watch<SignupViewModel>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...viewModel.domains.map((domainEntry) {
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 4.0),
+            child: ListTile(
+              leading: Icon(
+                domainEntry.isVerified ? Icons.check_circle : Icons.pending,
+                color: domainEntry.isVerified ? Colors.green : Colors.orange,
+              ),
+              title: Text(domainEntry.domain),
+              subtitle: Text(
+                domainEntry.isVerified ? 'Verified' : 'Verification required',
+              ),
+              trailing: domainEntry.isVerified
+                  ? null
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton(
+                          onPressed: () => _showDomainVerificationDialog(
+                            context,
+                            domainEntry,
+                          ),
+                          child: const Text('Verify'),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () =>
+                              viewModel.removeDomain(domainEntry.domain),
+                          tooltip: 'Remove Domain',
+                        ),
+                      ],
+                    ),
+            ),
+          );
+        }).toList(),
       ],
     );
   }

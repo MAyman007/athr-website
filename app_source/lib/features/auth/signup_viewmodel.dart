@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:math';
 import 'package:athr/core/services/firebase_service.dart';
 import 'package:athr/core/locator.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -43,8 +44,16 @@ class SignupViewModel extends ChangeNotifier {
 
   // Step 2: Primary Assets
   final domainController = TextEditingController();
-  final List<String> _domains = [];
-  List<String> get domains => List.unmodifiable(_domains);
+  final List<DomainEntry> _domains = [];
+  List<DomainEntry> get domains => List.unmodifiable(_domains);
+
+  // Helper to check if all domains are verified
+  bool get allDomainsVerified {
+    if (_domains.isEmpty) {
+      return false;
+    }
+    return _domains.every((d) => d.isVerified);
+  }
 
   // Step 3: High-Value Assets
   final ipRangeController = TextEditingController();
@@ -156,12 +165,41 @@ class SignupViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addDomain() => _addItemToList(domainController, _domains, step2Key);
-  void removeDomain(String domain) => _removeItemFromList(domain, _domains);
+  void addDomain() {
+    if (step2Key.currentState?.validate() ?? false) {
+      final text = domainController.text.trim();
+      if (text.isNotEmpty && !_domains.any((d) => d.domain == text)) {
+        _domains.add(DomainEntry(domain: text));
+        domainController.clear();
+        notifyListeners();
+      }
+    }
+  }
+
+  void removeDomain(String domain) {
+    _domains.removeWhere((d) => d.domain == domain);
+    notifyListeners();
+  }
+
+  String generateDomainVerificationToken(String domain) {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    final random = Random();
+    final token = String.fromCharCodes(
+      Iterable.generate(
+        24,
+        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
+      ),
+    );
+    final verificationValue = 'athr-domain-verification=dv-$token';
+
+    _domains.firstWhere((d) => d.domain == domain).verificationToken =
+        verificationValue;
+    notifyListeners();
+    return verificationValue;
+  }
 
   void addIpRange() => _addItemToList(ipRangeController, _ipRanges, step3Key);
   void removeIpRange(String ipRange) => _removeItemFromList(ipRange, _ipRanges);
-
   void addKeyword() => _addItemToList(keywordController, _keywords, step3Key);
   void removeKeyword(String keyword) => _removeItemFromList(keyword, _keywords);
 
@@ -198,9 +236,9 @@ class SignupViewModel extends ChangeNotifier {
         break;
       case 1:
         isStepValid = step2Key.currentState?.validate() ?? false;
-        if (_domains.isEmpty) {
+        if (_domains.isEmpty || !allDomainsVerified) {
           isStepValid = false;
-          _errorMessage = 'Please add at least one domain.';
+          _errorMessage = 'Please add and verify at least one domain.';
         }
         break;
       case 2:
@@ -257,7 +295,7 @@ class SignupViewModel extends ChangeNotifier {
         user: user,
         fullName: fullNameController.text.trim(),
         organizationName: organizationNameController.text.trim(),
-        domains: _domains,
+        domains: _domains.map((d) => d.domain).toList(),
         ipRanges: _ipRanges,
         keywords: _keywords,
         primaryNotificationEmail: primaryEmailController.text.trim(),
@@ -307,4 +345,23 @@ class SignupViewModel extends ChangeNotifier {
     notifyListeners();
     return true;
   }
+
+  // Mock domain verification
+  Future<bool> verifyDomain(String domain) async {
+    _domains.firstWhere((d) => d.domain == domain).isVerified = true;
+    notifyListeners();
+    return true;
+  }
+}
+
+class DomainEntry {
+  final String domain;
+  bool isVerified;
+  String? verificationToken;
+
+  DomainEntry({
+    required this.domain,
+    this.isVerified = false,
+    this.verificationToken,
+  });
 }
