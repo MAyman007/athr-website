@@ -1,41 +1,55 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/app_user.dart';
-import '../models/organization.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
+/// A service that encapsulates and centralizes Firebase interactions.
+///
+/// This acts as a facade over FirebaseAuth and FirebaseFirestore, making the
+/// rest of the app cleaner and easier to test.
 class FirebaseService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth auth = FirebaseAuth.instance;
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-  // --- Auth ---
+  // --- Auth Getters ---
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  /// Stream of authentication state changes.
+  Stream<User?> get authStateChanges => auth.authStateChanges();
 
-  User? get currentUser => _auth.currentUser;
+  /// The currently signed-in user.
+  User? get currentUser => auth.currentUser;
 
-  Future<UserCredential> signInWithEmailAndPassword(
-    String email,
-    String password,
-  ) {
-    return _auth.signInWithEmailAndPassword(email: email, password: password);
+  // --- Auth Methods ---
+
+  /// Signs in a user with the given email and password.
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) {
+    return auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
-  Future<void> signOut() {
-    return _auth.signOut();
-  }
-
-  Future<UserCredential> createUserWithEmailAndPassword(
-    String email,
-    String password,
-  ) {
-    return _auth.createUserWithEmailAndPassword(
+  /// Creates a new user with the given email and password.
+  Future<UserCredential> createUserWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) {
+    return auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
   }
 
-  // --- User & Organization ---
+  /// Signs out the current user.
+  Future<void> signOut() {
+    return auth.signOut();
+  }
 
+  // --- Firestore Methods ---
+  // You can add methods here to interact with Firestore,
+  // for example, creating a user document.
+  /// Sets up a new user and their organization in Firestore.
+  ///
+  /// This method creates an organization document and a user document within
+  /// a single transaction to ensure atomicity.
   Future<void> setupNewUserAndOrganization({
     required User user,
     required String fullName,
@@ -47,41 +61,32 @@ class FirebaseService {
     required String secondaryNotificationEmail,
     required String alertFrequency,
   }) async {
-    // Update user's display name first
-    await user.updateDisplayName(fullName);
+    final orgRef = firestore.collection('organizations').doc();
+    final userRef = firestore.collection('users').doc(user.uid);
 
-    // Create a batch write for atomic operation
-    final batch = _firestore.batch();
+    return firestore.runTransaction((transaction) async {
+      // Create the organization document
+      transaction.set(orgRef, {
+        'name': organizationName,
+        'createdBy': user.uid,
+        'domains': domains,
+        'ipRanges': ipRanges,
+        'keywords': keywords,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-    // 1. Create the organization document reference and model
-    final orgRef = _firestore.collection('organizations').doc();
-    final newOrganization = Organization(
-      id: orgRef.id,
-      name: organizationName,
-      domains: domains,
-      ipRanges: ipRanges,
-      keywords: keywords,
-      createdBy: user.uid,
-    );
-    batch.set(orgRef, newOrganization.toMap());
-
-    // 2. Create the user document reference and model
-    final userRef = _firestore.collection('users').doc(user.uid);
-    final newUser = AppUser(
-      uid: user.uid,
-      orgId: orgRef.id,
-      email: user.email!,
-      fullName: fullName,
-      role: 'admin', // Default role for creator
-      settings: UserSettings(
-        primaryNotificationEmail: primaryNotificationEmail,
-        secondaryNotificationEmail: secondaryNotificationEmail,
-        alertFrequency: alertFrequency,
-      ),
-    );
-    batch.set(userRef, newUser.toMap());
-
-    // Commit the batch
-    await batch.commit();
+      // Create the user document
+      transaction.set(userRef, {
+        'fullName': fullName,
+        'email': user.email,
+        'orgId': orgRef.id,
+        'role': 'admin', // First user is the admin
+        'settings': {
+          'primaryNotificationEmail': primaryNotificationEmail,
+          'secondaryNotificationEmail': secondaryNotificationEmail,
+          'alertFrequency': alertFrequency,
+        },
+      });
+    });
   }
 }

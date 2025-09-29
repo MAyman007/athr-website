@@ -45,6 +45,7 @@ dependencies:
   envied: ^1.3.0
   http: ^1.5.0
   google_fonts: ^6.3.2
+  fl_chart: ^1.1.1
 
 dev_dependencies:
   flutter_test:

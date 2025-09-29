@@ -284,8 +284,8 @@ class SignupViewModel extends ChangeNotifier {
     try {
       final userCredential = await _firebaseService
           .createUserWithEmailAndPassword(
-            workEmailController.text.trim(),
-            passwordController.text,
+            email: workEmailController.text.trim(),
+            password: passwordController.text,
           );
 
       final User? user = userCredential.user;

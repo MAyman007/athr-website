@@ -45,8 +45,8 @@ class LoginViewModel extends ChangeNotifier {
 
     try {
       await _firebaseService.signInWithEmailAndPassword(
-        emailController.text.trim(),
-        passwordController.text,
+        email: emailController.text.trim(),
+        password: passwordController.text,
       );
       _isLoading = false;
       notifyListeners();
