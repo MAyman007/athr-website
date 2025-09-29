@@ -1,5 +1,6 @@
 import 'package:athr/core/models/incident.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:athr/core/locator.dart';
 import 'package:athr/core/services/firebase_service.dart';
@@ -26,6 +27,13 @@ class DashboardPage extends StatelessWidget {
                   icon: const Icon(Icons.refresh),
                   onPressed: viewModel.isLoading ? null : viewModel.loadData,
                 );
+              },
+            ),
+            // Settings Button
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                context.push('/dashboard/settings');
               },
             ),
             // Logout Button

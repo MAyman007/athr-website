@@ -12,6 +12,7 @@ import 'features/auth/gatekeeper_page.dart';
 import 'features/auth/signup_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 import 'features/admin/admin_page.dart';
+import 'features/dashboard/settings_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,12 @@ class AthrApp extends StatelessWidget {
           GoRoute(
             path: '/dashboard',
             builder: (context, state) => const DashboardPage(),
+            routes: [
+              GoRoute(
+                path: 'settings',
+                builder: (context, state) => const SettingsPage(),
+              ),
+            ],
           ),
           GoRoute(path: '/admin', builder: (context, state) => AdminPage()),
         ],

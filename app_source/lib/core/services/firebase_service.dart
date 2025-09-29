@@ -89,4 +89,73 @@ class FirebaseService {
       });
     });
   }
+
+  /// Fetches the current user's settings and their organization's settings.
+  Future<Map<String, dynamic>> getUserAndOrgSettings() async {
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated.');
+    }
+
+    final userDoc = await firestore.collection('users').doc(user.uid).get();
+    if (!userDoc.exists || userDoc.data() == null) {
+      throw Exception('User document not found.');
+    }
+
+    final userData = userDoc.data()!;
+    final orgId = userData['orgId'] as String?;
+    if (orgId == null) {
+      throw Exception('Organization ID not found for user.');
+    }
+
+    final orgDoc = await firestore.collection('organizations').doc(orgId).get();
+    if (!orgDoc.exists || orgDoc.data() == null) {
+      throw Exception('Organization document not found.');
+    }
+
+    final orgData = orgDoc.data()!;
+
+    return {
+      'domains': orgData['domains'] ?? [],
+      'ipRanges': orgData['ipRanges'] ?? [],
+      'keywords': orgData['keywords'] ?? [],
+      'alertFrequency':
+          userData['settings']?['alertFrequency'] ?? 'Daily Digest',
+    };
+  }
+
+  /// Updates user and organization settings in Firestore.
+  Future<void> updateUserAndOrgSettings({
+    required List<String> domains,
+    required List<String> ipRanges,
+    required List<String> keywords,
+    required String alertFrequency,
+  }) async {
+    final user = currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated.');
+    }
+
+    final userRef = firestore.collection('users').doc(user.uid);
+    final userDoc = await userRef.get();
+    final orgId = userDoc.data()?['orgId'] as String?;
+
+    if (orgId == null) {
+      throw Exception('Organization ID not found for user.');
+    }
+
+    final orgRef = firestore.collection('organizations').doc(orgId);
+
+    // Use a batch write to update both documents.
+    final batch = firestore.batch();
+
+    batch.update(orgRef, {
+      'domains': domains,
+      'ipRanges': ipRanges,
+      'keywords': keywords,
+    });
+    batch.update(userRef, {'settings.alertFrequency': alertFrequency});
+
+    await batch.commit();
+  }
 }
