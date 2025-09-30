@@ -519,6 +519,16 @@ class _CompromisedMachineCardState extends State<_CompromisedMachineCard> {
                 label: 'Leaked Autofills',
                 value: (log.leakedAutofills ?? 0) > 0 ? 'Yes' : 'No',
               ),
+              if (widget.incident.logs.any((l) => l.domainsLeaked.isNotEmpty))
+                _MetricDetailsPageState._buildDetailRow(
+                  context,
+                  icon: Icons.public,
+                  label: 'Leaked Accounts',
+                  value: widget.incident.logs
+                      .expand((l) => l.domainsLeaked)
+                      .toSet()
+                      .join(', '),
+                ),
             ],
             const SizedBox(height: 16),
             Row(
