@@ -1,4 +1,6 @@
 import 'package:athr/core/models/incident.dart';
+import 'package:athr/core/models/recommendation.dart';
+import 'package:athr/core/services/recommendation_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -322,6 +324,7 @@ class _DefaultIncidentCard extends StatefulWidget {
 
 class _DefaultIncidentCardState extends State<_DefaultIncidentCard> {
   bool _isExpanded = false;
+  bool _showRecommendations = false;
 
   @override
   Widget build(BuildContext context) {
@@ -388,25 +391,41 @@ class _DefaultIncidentCardState extends State<_DefaultIncidentCard> {
                 incident.emails,
               ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextButton.icon(
-                  icon: AnimatedRotation(
-                    turns: _isExpanded ? 0.25 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: const Icon(Icons.arrow_right),
-                  ),
-                  label: const Text('Details'),
-                  onPressed: () => setState(() => _isExpanded = !_isExpanded),
-                ),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Open File'),
-                  onPressed: () =>
-                      _MetricDetailsPageState._showOpenFilePasswordDialog(
-                        context,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      icon: AnimatedRotation(
+                        turns: _isExpanded ? 0.25 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(Icons.arrow_right),
                       ),
+                      label: const Text('Details'),
+                      onPressed: () =>
+                          setState(() => _isExpanded = !_isExpanded),
+                    ),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Open File'),
+                      onPressed: () =>
+                          _MetricDetailsPageState._showOpenFilePasswordDialog(
+                            context,
+                          ),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  icon: const Icon(Icons.recommend_outlined),
+                  label: const Text('Recommended Actions'),
+                  onPressed: () {
+                    setState(
+                      () => _showRecommendations = !_showRecommendations,
+                    );
+                  },
                 ),
               ],
             ),
@@ -435,6 +454,15 @@ class _DefaultIncidentCardState extends State<_DefaultIncidentCard> {
                     : const SizedBox.shrink(),
               ),
             ),
+            if (_showRecommendations)
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: _RecommendedActionsSection(
+                  incident: widget.incident,
+                  metricId: widget.metricId,
+                ),
+              ),
           ],
         ),
       ),
@@ -454,6 +482,7 @@ class _CompromisedMachineCard extends StatefulWidget {
 
 class _CompromisedMachineCardState extends State<_CompromisedMachineCard> {
   bool _isExpanded = false;
+  bool _showRecommendations = false;
 
   @override
   Widget build(BuildContext context) {
@@ -531,18 +560,28 @@ class _CompromisedMachineCardState extends State<_CompromisedMachineCard> {
                 ),
             ],
             const SizedBox(height: 16),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (log != null)
                   TextButton.icon(
                     icon: AnimatedRotation(
                       turns: _isExpanded ? 0.25 : 0,
                       duration: const Duration(milliseconds: 200),
-                      child: const Icon(Icons.arrow_drop_down),
+                      child: const Icon(Icons.arrow_right),
                     ),
                     label: const Text('Details'),
                     onPressed: () => setState(() => _isExpanded = !_isExpanded),
                   ),
+                TextButton.icon(
+                  icon: const Icon(Icons.recommend_outlined),
+                  label: const Text('Recommended Actions'),
+                  onPressed: () {
+                    setState(
+                      () => _showRecommendations = !_showRecommendations,
+                    );
+                  },
+                ),
               ],
             ),
             AnimatedSize(
@@ -594,8 +633,218 @@ class _CompromisedMachineCardState extends State<_CompromisedMachineCard> {
                     : const SizedBox.shrink(),
               ),
             ),
+            if (_showRecommendations)
+              AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: _RecommendedActionsSection(
+                  incident: widget.incident,
+                  metricId: 'compromised-machines',
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RecommendedActionsSection extends StatefulWidget {
+  final Incident incident;
+  final String metricId;
+
+  const _RecommendedActionsSection({
+    required this.incident,
+    required this.metricId,
+  });
+
+  @override
+  State<_RecommendedActionsSection> createState() =>
+      _RecommendedActionsSectionState();
+}
+
+class _RecommendedActionsSectionState
+    extends State<_RecommendedActionsSection> {
+  // Use a list of booleans to track the expansion state of each panel.
+  late Future<List<Recommendation>> _recommendationsFuture;
+
+  // Helper to get a color based on severity
+  Color _getColorForSeverity(String severity) {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return Colors.red.shade700;
+      case 'high':
+        return Colors.orange.shade700;
+      case 'medium':
+        return Colors.amber.shade700;
+      case 'low':
+        return Colors.blue.shade700;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch the data only once when the widget is initialized.
+    _recommendationsFuture = RecommendationService()
+        .getRecommendationsForIncident(widget.incident, widget.metricId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return FutureBuilder<List<Recommendation>>(
+      future: _recommendationsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(child: Text('Error: ${snapshot.error}')),
+          );
+        }
+
+        final recommendations = snapshot.data ?? [];
+        if (recommendations.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 16, bottom: 8),
+                child: Text(
+                  'Recommended Actions',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: recommendations.length,
+                itemBuilder: (context, index) {
+                  final rec = recommendations[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      vertical: 4.0,
+                      horizontal: 8.0,
+                    ),
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.shield,
+                        color: _getColorForSeverity(rec.severity),
+                      ),
+                      title: Text(rec.title, style: textTheme.titleMedium),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _showRecommendationDialog(context, rec),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showRecommendationDialog(
+    BuildContext context,
+    Recommendation recommendation,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: ListTile(
+            leading: Icon(
+              Icons.shield,
+              color: _getColorForSeverity(recommendation.severity),
+              size: 28,
+            ),
+            title: Text(recommendation.title, style: textTheme.titleLarge),
+          ),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(recommendation.summary, style: textTheme.bodyMedium),
+                  const Divider(height: 24),
+                  ...recommendation.steps.map(
+                    (step) => ListTile(
+                      leading: const Padding(
+                        padding: EdgeInsets.only(left: 8.0, top: 4.0),
+                        child: Icon(Icons.circle, size: 8),
+                      ),
+                      title: Text(step),
+                      dense: true,
+                    ),
+                  ),
+                  if (recommendation.notes != null &&
+                      recommendation.notes!.isNotEmpty)
+                    _buildNotesBox(context, recommendation.notes!),
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ],
+          actionsPadding: const EdgeInsets.only(right: 16.0, bottom: 8.0),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotesBox(BuildContext context, String notes) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8.0),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.secondary.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: Theme.of(context).colorScheme.secondary,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              notes,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
