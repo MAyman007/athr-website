@@ -1,4 +1,5 @@
 import 'package:athr/core/models/incident.dart';
+import 'package:athr/core/models/log.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -237,13 +238,13 @@ class _MetricDetailsPageState extends State<MetricDetailsPage> {
                           label: 'Date',
                           value: DateFormat.yMMMd().format(incident.postedAt!),
                         ),
-                      if (incident.emails.isNotEmpty)
-                        _buildDetailRow(
-                          context,
-                          icon: Icons.email_outlined,
-                          label: 'Leaked Emails',
-                          value: incident.emails.join(', '),
-                        ),
+                      // Show relevant details based on the metric type
+                      if (widget.metricId == 'leaked-credentials' &&
+                          incident.emails.isNotEmpty)
+                        ..._buildEmailDetails(context, incident.emails),
+                      if (widget.metricId == 'compromised-machines' &&
+                          incident.logs.isNotEmpty)
+                        ..._buildMachineDetails(context, incident.logs),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -273,6 +274,55 @@ class _MetricDetailsPageState extends State<MetricDetailsPage> {
         },
       ),
     );
+  }
+
+  List<Widget> _buildEmailDetails(BuildContext context, List<String> emails) {
+    return [
+      _buildDetailRow(
+        context,
+        icon: Icons.email_outlined,
+        label: 'Leaked Emails',
+        value: emails.join(', '),
+      ),
+    ];
+  }
+
+  List<Widget> _buildMachineDetails(BuildContext context, List<Log> logs) {
+    final widgets = <Widget>[];
+    // To avoid too much clutter, we'll just show the first log's details.
+    // In a real app, you might have an expandable section for multiple logs.
+    if (logs.isNotEmpty) {
+      final log = logs.first;
+      widgets.add(
+        _buildDetailRow(
+          context,
+          icon: Icons.computer_outlined,
+          label: 'Machine Name',
+          value: log.machineName,
+        ),
+      );
+      if (log.machineIp != null) {
+        widgets.add(
+          _buildDetailRow(
+            context,
+            icon: Icons.lan_outlined,
+            label: 'IP Address',
+            value: log.machineIp!,
+          ),
+        );
+      }
+      if (log.machineUsername != null) {
+        widgets.add(
+          _buildDetailRow(
+            context,
+            icon: Icons.person_outline,
+            label: 'Username',
+            value: log.machineUsername!,
+          ),
+        );
+      }
+    }
+    return widgets;
   }
 
   Widget _buildDetailRow(

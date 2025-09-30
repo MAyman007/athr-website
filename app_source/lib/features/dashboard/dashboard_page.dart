@@ -15,7 +15,8 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('Athr Dashboard'),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -460,7 +461,7 @@ class _CategoryBarChart extends StatelessWidget {
 }
 
 /// A reusable card widget for displaying a key metric.
-class _MetricCard extends StatelessWidget {
+class _MetricCard extends StatefulWidget {
   final String title;
   final String value;
   final IconData icon;
@@ -468,6 +469,7 @@ class _MetricCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const _MetricCard({
+    // ignore: unused_element
     required this.title,
     required this.value,
     required this.icon,
@@ -476,47 +478,62 @@ class _MetricCard extends StatelessWidget {
   });
 
   @override
+  State<_MetricCard> createState() => _MetricCardState();
+}
+
+class _MetricCardState extends State<_MetricCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 220,
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(left: BorderSide(color: color, width: 5)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 32, color: color),
-            const SizedBox(height: 16),
-            Text(
-              value,
-              style: textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: textTheme.bodyLarge?.color,
+    final duration = const Duration(milliseconds: 200);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: duration,
+          width: 220,
+          transform: Matrix4.translationValues(0, _isHovered ? -5 : 0, 0),
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border(left: BorderSide(color: widget.color, width: 5)),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withOpacity(_isHovered ? 0.2 : 0.05),
+                blurRadius: _isHovered ? 15 : 10,
+                offset: _isHovered ? const Offset(0, 8) : const Offset(0, 4),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: textTheme.bodyMedium?.copyWith(
-                color: textTheme.bodySmall?.color,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(widget.icon, size: 32, color: widget.color),
+              const SizedBox(height: 16),
+              Text(
+                widget.value,
+                style: textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: textTheme.bodyLarge?.color,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                widget.title,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: textTheme.bodySmall?.color,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );

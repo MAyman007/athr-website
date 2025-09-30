@@ -16,6 +16,7 @@ class DashboardViewModel extends ChangeNotifier {
   List<Incident> _leakedCredentialsIncidents = [];
   List<Incident> _compromisedMachinesIncidents = [];
   List<Incident> _highSeverityIncidents = [];
+  int _uniqueEmailCount = 0;
   Map<IncidentSeverity, int> _incidentsBySeverity = {};
   Map<String, int> _incidentsByCategory = {};
 
@@ -50,11 +51,13 @@ class DashboardViewModel extends ChangeNotifier {
     final highSeverity = <Incident>[];
     final severityMap = <IncidentSeverity, int>{};
     final categoryMap = <String, int>{};
+    final uniqueEmails = <String>{};
 
     for (final incident in _incidents) {
       // Leaked Credentials
       if (incident.emails.isNotEmpty) {
         leaked.add(incident);
+        uniqueEmails.addAll(incident.emails);
       }
 
       // Compromised Machines
@@ -83,6 +86,7 @@ class DashboardViewModel extends ChangeNotifier {
     _leakedCredentialsIncidents = leaked;
     _compromisedMachinesIncidents = compromised;
     _highSeverityIncidents = highSeverity;
+    _uniqueEmailCount = uniqueEmails.length;
     _incidentsBySeverity = severityMap;
     _incidentsByCategory = categoryMap;
   }
@@ -92,8 +96,8 @@ class DashboardViewModel extends ChangeNotifier {
   /// Total number of incidents fetched.
   int get totalIncidents => _incidents.length;
 
-  /// Total number of unique leaked credentials (emails).
-  int get totalLeakedCredentials => _leakedCredentialsIncidents.length;
+  /// Total number of unique leaked emails.
+  int get totalLeakedCredentials => _uniqueEmailCount;
 
   /// Total number of unique compromised machines.
   int get totalCompromisedMachines => _compromisedMachinesIncidents.length;
