@@ -24,7 +24,11 @@ class IncidentService {
   /// 5. Parses the JSON response into a list of [Incident] objects.
   ///
   /// Throws an [Exception] if any step fails.
-  Future<List<Incident>> fetchIncidents() async {
+  Future<List<Incident>> fetchIncidents({
+    int page = 1,
+    int limit = 20,
+    String? metricId,
+  }) async {
     try {
       // 1. Get the current authenticated user
       final User? user = _firebaseService.auth.currentUser;
@@ -61,10 +65,16 @@ class IncidentService {
         return [];
       }
 
-      debugPrint('API Endpoint: $_apiEndpoint?domains=${domains.join(',')}');
+      var url =
+          '$_apiEndpoint?domains=${domains.join(',')}&page=$page&limit=$limit';
+
+      if (metricId != null && metricId != 'total-incidents') {
+        url += '&metricId=$metricId';
+      }
+      debugPrint('API Endpoint: $url');
 
       // 4. Make a GET request with domains as a comma-separated query parameter.
-      final uri = Uri.parse('$_apiEndpoint?domains=${domains.join(',')}');
+      final uri = Uri.parse(url);
 
       final response = await http.get(uri);
       if (response.statusCode == 200) {

@@ -12,11 +12,10 @@ class DashboardViewModel extends ChangeNotifier {
   List<Incident> _incidents = [];
   String? _errorMessage;
 
-  // Private cached metrics
-  int _totalIncidents = 0;
-  int _totalLeakedCredentials = 0;
-  int _totalCompromisedMachines = 0;
-  int _highSeverityCount = 0;
+  // Private cached metric lists
+  List<Incident> _leakedCredentialsIncidents = [];
+  List<Incident> _compromisedMachinesIncidents = [];
+  List<Incident> _highSeverityIncidents = [];
   Map<IncidentSeverity, int> _incidentsBySeverity = {};
   Map<String, int> _incidentsByCategory = {};
 
@@ -32,7 +31,9 @@ class DashboardViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _incidents = await _incidentService.fetchIncidents();
+      // Fetch all incidents for the dashboard metrics. Pagination is handled
+      // by the MetricDetailsViewModel for the details page.
+      _incidents = await _incidentService.fetchIncidents(limit: 10000);
       _calculateMetrics(); // Calculate metrics once after data is fetched.
     } catch (e) {
       _errorMessage = e.toString();
@@ -44,29 +45,27 @@ class DashboardViewModel extends ChangeNotifier {
 
   /// Calculates and caches all the dashboard metrics.
   void _calculateMetrics() {
-    _totalIncidents = _incidents.length;
-
-    final uniqueEmails = <String>{};
-    final uniqueMachines = <String>{};
-    int highSeverityCount = 0;
+    final leaked = <Incident>[];
+    final compromised = <Incident>[];
+    final highSeverity = <Incident>[];
     final severityMap = <IncidentSeverity, int>{};
     final categoryMap = <String, int>{};
 
     for (final incident in _incidents) {
       // Leaked Credentials
       if (incident.emails.isNotEmpty) {
-        uniqueEmails.addAll(incident.emails);
+        leaked.add(incident);
       }
 
       // Compromised Machines
-      for (final log in incident.logs) {
-        uniqueMachines.add(log.machineName);
+      if (incident.logs.isNotEmpty) {
+        compromised.add(incident);
       }
 
       // High Severity Count
       if (incident.severity == IncidentSeverity.high ||
           incident.severity == IncidentSeverity.critical) {
-        highSeverityCount++;
+        highSeverity.add(incident);
       }
 
       // Incidents by Severity
@@ -81,9 +80,9 @@ class DashboardViewModel extends ChangeNotifier {
       categoryMap.update(category, (count) => count + 1, ifAbsent: () => 1);
     }
 
-    _totalLeakedCredentials = uniqueEmails.length;
-    _totalCompromisedMachines = uniqueMachines.length;
-    _highSeverityCount = highSeverityCount;
+    _leakedCredentialsIncidents = leaked;
+    _compromisedMachinesIncidents = compromised;
+    _highSeverityIncidents = highSeverity;
     _incidentsBySeverity = severityMap;
     _incidentsByCategory = categoryMap;
   }
@@ -91,16 +90,21 @@ class DashboardViewModel extends ChangeNotifier {
   // --- Calculated Metrics ---
 
   /// Total number of incidents fetched.
-  int get totalIncidents => _totalIncidents;
+  int get totalIncidents => _incidents.length;
 
   /// Total number of unique leaked credentials (emails).
-  int get totalLeakedCredentials => _totalLeakedCredentials;
+  int get totalLeakedCredentials => _leakedCredentialsIncidents.length;
 
   /// Total number of unique compromised machines.
-  int get totalCompromisedMachines => _totalCompromisedMachines;
+  int get totalCompromisedMachines => _compromisedMachinesIncidents.length;
 
   /// Count of incidents with 'high' or 'critical' severity.
-  int get highSeverityCount => _highSeverityCount;
+  int get highSeverityCount => _highSeverityIncidents.length;
+
+  List<Incident> get leakedCredentialsIncidents => _leakedCredentialsIncidents;
+  List<Incident> get compromisedMachinesIncidents =>
+      _compromisedMachinesIncidents;
+  List<Incident> get highSeverityIncidents => _highSeverityIncidents;
 
   /// A map of incident counts grouped by severity, suitable for charts.
   Map<IncidentSeverity, int> get incidentsBySeverity => _incidentsBySeverity;

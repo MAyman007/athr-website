@@ -1,18 +1,23 @@
 import 'package:athr/firebase_options.dart';
 import 'package:athr/app/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:athr/core/locator.dart';
 import 'package:athr/core/services/firebase_service.dart';
 import 'package:athr/core/services/incident_service.dart';
+import 'package:provider/provider.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/gatekeeper_page.dart';
 import 'features/auth/signup_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 import 'features/admin/admin_page.dart';
 import 'features/dashboard/settings_page.dart';
+import 'features/dashboard/metric_details_page.dart';
+import 'features/dashboard/dashboard_shell.dart';
+import 'features/dashboard/dashboard_viewmodel.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,13 +57,29 @@ class AthrApp extends StatelessWidget {
             builder: (context, state) =>
                 const GatekeeperPage(child: SignupPage()),
           ),
-          GoRoute(
-            path: '/dashboard',
-            builder: (context, state) => const DashboardPage(),
+          ShellRoute(
+            builder: (context, state, child) {
+              return ChangeNotifierProvider(
+                create: (context) => DashboardViewModel()..loadData(),
+                child: DashboardShell(child: child),
+              );
+            },
             routes: [
               GoRoute(
-                path: 'settings',
-                builder: (context, state) => const SettingsPage(),
+                path: '/dashboard',
+                builder: (context, state) => const DashboardPage(),
+                routes: [
+                  GoRoute(
+                    path: 'settings',
+                    builder: (context, state) => const SettingsPage(),
+                  ),
+                  GoRoute(
+                    path: 'details/:metricId',
+                    builder: (context, state) => MetricDetailsPage(
+                      metricId: state.pathParameters['metricId']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
