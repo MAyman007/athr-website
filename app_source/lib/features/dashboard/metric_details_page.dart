@@ -522,27 +522,17 @@ class _CompromisedMachineCardState extends State<_CompromisedMachineCard> {
             ],
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 if (log != null)
                   TextButton.icon(
                     icon: AnimatedRotation(
                       turns: _isExpanded ? 0.25 : 0,
                       duration: const Duration(milliseconds: 200),
-                      child: const Icon(Icons.arrow_right),
+                      child: const Icon(Icons.arrow_drop_down),
                     ),
                     label: const Text('Details'),
                     onPressed: () => setState(() => _isExpanded = !_isExpanded),
                   ),
-                const Spacer(), // Pushes the Open File button to the right
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Open File'),
-                  onPressed: () =>
-                      _MetricDetailsPageState._showOpenFilePasswordDialog(
-                        context,
-                      ),
-                ),
               ],
             ),
             AnimatedSize(

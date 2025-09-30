@@ -164,12 +164,7 @@ class DashboardPage extends StatelessWidget {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: _buildSeverityChart(
-                                    context,
-                                    viewModel,
-                                  ),
-                                ),
+                                Expanded(child: _buildSeverityChart(viewModel)),
                                 const SizedBox(width: 24),
                                 Expanded(
                                   child: _buildDateChart(context, viewModel),
@@ -180,13 +175,7 @@ class DashboardPage extends StatelessWidget {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: _buildCategoryChart(
-                                    context,
-                                    viewModel,
-                                  ),
-                                ),
-
+                                Expanded(child: _buildCategoryChart(viewModel)),
                                 const SizedBox(width: 24),
                                 Expanded(
                                   child: _buildSourceChart(context, viewModel),
@@ -216,11 +205,11 @@ class DashboardPage extends StatelessWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSeverityChart(context, viewModel),
+                            _buildSeverityChart(viewModel),
                             const SizedBox(height: 24),
                             _buildDateChart(context, viewModel),
                             const SizedBox(height: 24),
-                            _buildCategoryChart(context, viewModel),
+                            _buildCategoryChart(viewModel),
                             const SizedBox(height: 24),
                             _buildSourceChart(context, viewModel),
                             const SizedBox(height: 24),
@@ -241,69 +230,39 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSeverityChart(
-    BuildContext context,
-    DashboardViewModel viewModel,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Incidents by Severity',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(height: 250, child: _SeverityPieChart(viewModel: viewModel)),
-      ],
+  Widget _buildSeverityChart(DashboardViewModel viewModel) {
+    return _ChartSection(
+      title: 'Incidents by Severity',
+      child: SizedBox(
+        height: 250,
+        child: _SeverityPieChart(viewModel: viewModel),
+      ),
     );
   }
 
-  Widget _buildCategoryChart(
-    BuildContext context,
-    DashboardViewModel viewModel,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Incidents by Category',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 250,
-          width: double.infinity,
-          child: _CategoryBarChart(viewModel: viewModel),
-        ),
-      ],
+  Widget _buildCategoryChart(DashboardViewModel viewModel) {
+    return _ChartSection(
+      title: 'Incidents by Category',
+      child: SizedBox(
+        height: 250,
+        width: double.infinity,
+        child: _CategoryBarChart(viewModel: viewModel),
+      ),
     );
   }
 
   Widget _buildSourceChart(BuildContext context, DashboardViewModel viewModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Top Leak Sources',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    return _ChartSection(
+      title: 'Top Leak Sources',
+      child: SizedBox(
+        height: 250,
+        width: double.infinity,
+        child: _VerticalBarChart(
+          data: viewModel.incidentsBySource,
+          color: Colors.teal,
+          title: 'Sources',
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 250,
-          width: double.infinity,
-          child: _VerticalBarChart(
-            data: viewModel.incidentsBySource,
-            color: Colors.teal,
-            title: 'Sources',
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -311,26 +270,17 @@ class DashboardPage extends StatelessWidget {
     BuildContext context,
     DashboardViewModel viewModel,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Compromised Assets by Country',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    return _ChartSection(
+      title: 'Compromised Assets by Country',
+      child: SizedBox(
+        height: 250,
+        width: double.infinity,
+        child: _VerticalBarChart(
+          data: viewModel.machinesByCountry,
+          color: Colors.indigo,
+          title: 'Countries',
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 250,
-          width: double.infinity,
-          child: _VerticalBarChart(
-            data: viewModel.machinesByCountry,
-            color: Colors.indigo,
-            title: 'Countries',
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -338,50 +288,32 @@ class DashboardPage extends StatelessWidget {
     BuildContext context,
     DashboardViewModel viewModel,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Top Affected User Accounts',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    return _ChartSection(
+      title: 'Top Affected User Accounts',
+      child: SizedBox(
+        height: 250,
+        width: double.infinity,
+        child: _VerticalBarChart(
+          data: viewModel.incidentsByUsername,
+          color: Colors.green,
+          title: 'Usernames',
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 250,
-          width: double.infinity,
-          child: _VerticalBarChart(
-            data: viewModel.incidentsByUsername,
-            color: Colors.green,
-            title: 'Usernames',
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildDateChart(BuildContext context, DashboardViewModel viewModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Incidents Over Time',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    return _ChartSection(
+      title: 'Incidents Over Time',
+      child: SizedBox(
+        height: 250,
+        width: double.infinity,
+        child: _DateLineChart(
+          data: viewModel.incidentsByDate,
+          color: Colors.blueAccent,
+          title: 'Incidents',
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 250,
-          width: double.infinity,
-          child: _DateLineChart(
-            data: viewModel.incidentsByDate,
-            color: Colors.blueAccent,
-            title: 'Incidents',
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -953,6 +885,38 @@ class _DateLineChart extends StatelessWidget {
 //     );
 //   }
 // }
+
+/// A styled container for a chart with a title.
+class _ChartSection extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _ChartSection({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 /// A reusable card widget for displaying a key metric.
 class _MetricCard extends StatefulWidget {
