@@ -1,7 +1,6 @@
 import 'package:athr/firebase_options.dart';
 import 'package:athr/app/app_theme.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -12,7 +11,9 @@ import 'package:provider/provider.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/gatekeeper_page.dart';
 import 'features/auth/signup_page.dart';
+import 'features/alerts/alerts_page.dart';
 import 'features/dashboard/dashboard_page.dart';
+import 'features/incidents/incidents_page.dart';
 import 'features/admin/admin_page.dart';
 import 'features/dashboard/settings_page.dart';
 import 'features/dashboard/metric_details_page.dart';
@@ -69,6 +70,14 @@ class AthrApp extends StatelessWidget {
                 path: '/dashboard',
                 builder: (context, state) => const DashboardPage(),
                 routes: [
+                  GoRoute(
+                    path: 'alerts',
+                    builder: (context, state) => const AlertsPage(),
+                  ),
+                  GoRoute(
+                    path: 'incidents',
+                    builder: (context, state) => const IncidentsPage(),
+                  ),
                   GoRoute(
                     path: 'settings',
                     builder: (context, state) => const SettingsPage(),

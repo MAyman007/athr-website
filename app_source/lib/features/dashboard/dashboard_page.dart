@@ -18,6 +18,20 @@ class DashboardPage extends StatelessWidget {
         title: const Text('Athr Dashboard'),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         actions: [
+          // Alerts Button
+          IconButton(
+            icon: const Icon(Icons.notifications_active_outlined),
+            tooltip: 'New Alerts',
+            onPressed: () => context.push('/dashboard/alerts'),
+          ),
+          // Incidents Button
+          IconButton(
+            icon: const Icon(Icons.list_alt_outlined),
+            tooltip: 'All Incidents',
+            onPressed: () => context.push('/dashboard/incidents'),
+          ),
+          const VerticalDivider(indent: 12, endIndent: 12),
+          // Refresh Button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => context.read<DashboardViewModel>().isLoading
