@@ -1,5 +1,4 @@
 import 'package:athr/core/models/incident.dart';
-import 'package:athr/core/models/log.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -192,117 +191,14 @@ class _MetricDetailsPageState extends State<MetricDetailsPage> {
                 );
               }
               final incident = _displayIncidents[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16.0),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              incident.originalFilename ?? 'Unknown File',
-                              style: textTheme.titleLarge,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Chip(
-                            label: Text(
-                              incident.severity.name.toUpperCase(),
-                              style: textTheme.labelSmall?.copyWith(
-                                color: Colors.white,
-                              ),
-                            ),
-                            backgroundColor: incident.severity.color,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDetailRow(
-                        context,
-                        icon: Icons.source,
-                        label: 'Source',
-                        value: incident.source,
-                      ),
-                      if (incident.postedAt != null)
-                        _buildDetailRow(
-                          context,
-                          icon: Icons.calendar_today,
-                          label: 'Date',
-                          value: DateFormat.yMMMd().format(incident.postedAt!),
-                        ),
-                      // Show relevant details based on the metric type
-                      if (widget.metricId == 'leaked-credentials' &&
-                          incident.emails.isNotEmpty)
-                        ..._buildEmailDetails(context, incident.emails),
-                      if (widget.metricId == 'compromised-machines' &&
-                          incident.logs.isNotEmpty)
-                        ..._buildMachineDetails(context, incident.logs),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.open_in_new),
-                            label: const Text('Open File'),
-                            onPressed: () async {
-                              await showDialog(
-                                context: context,
-                                builder: (BuildContext dialogContext) {
-                                  final passwordController =
-                                      TextEditingController();
-                                  return AlertDialog(
-                                    title: const Text(
-                                      'Authentication Required',
-                                    ),
-                                    content: SingleChildScrollView(
-                                      child: ListBody(
-                                        children: <Widget>[
-                                          const Text(
-                                            'Please enter your account password to access this file.',
-                                          ),
-                                          const SizedBox(height: 16),
-                                          TextFormField(
-                                            controller: passwordController,
-                                            obscureText: true,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Password',
-                                              border: OutlineInputBorder(),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        child: const Text('Cancel'),
-                                        onPressed: () =>
-                                            Navigator.of(dialogContext).pop(),
-                                      ),
-                                      ElevatedButton(
-                                        child: const Text('Confirm'),
-                                        onPressed: () =>
-                                            Navigator.of(dialogContext).pop(),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              if (widget.metricId == 'compromised-machines') {
+                return _CompromisedMachineCard(incident: incident);
+              } else {
+                return _DefaultIncidentCard(
+                  incident: incident,
+                  metricId: widget.metricId,
+                );
+              }
             },
           );
         },
@@ -310,7 +206,71 @@ class _MetricDetailsPageState extends State<MetricDetailsPage> {
     );
   }
 
-  List<Widget> _buildEmailDetails(BuildContext context, List<String> emails) {
+  static _showOpenFilePasswordDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final passwordController = TextEditingController();
+        return AlertDialog(
+          title: const Text('Authentication Required'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                const Text(
+                  'Please enter your account password to access this file.',
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            ElevatedButton(
+              child: const Text('Confirm'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  static Widget _buildDialogDetailRow(String label, String? value) {
+    if (value == null || value.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(color: Colors.grey),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static List<Widget> _buildEmailDetails(
+    BuildContext context,
+    List<String> emails,
+  ) {
     return [
       _buildDetailRow(
         context,
@@ -321,45 +281,7 @@ class _MetricDetailsPageState extends State<MetricDetailsPage> {
     ];
   }
 
-  List<Widget> _buildMachineDetails(BuildContext context, List<Log> logs) {
-    final widgets = <Widget>[];
-    // To avoid too much clutter, we'll just show the first log's details.
-    // In a real app, you might have an expandable section for multiple logs.
-    if (logs.isNotEmpty) {
-      final log = logs.first;
-      widgets.add(
-        _buildDetailRow(
-          context,
-          icon: Icons.computer_outlined,
-          label: 'Machine Name',
-          value: log.machineName,
-        ),
-      );
-      if (log.machineIp != null) {
-        widgets.add(
-          _buildDetailRow(
-            context,
-            icon: Icons.lan_outlined,
-            label: 'IP Address',
-            value: log.machineIp!,
-          ),
-        );
-      }
-      if (log.machineUsername != null) {
-        widgets.add(
-          _buildDetailRow(
-            context,
-            icon: Icons.person_outline,
-            label: 'Username',
-            value: log.machineUsername!,
-          ),
-        );
-      }
-    }
-    return widgets;
-  }
-
-  Widget _buildDetailRow(
+  static Widget _buildDetailRow(
     BuildContext context, {
     required IconData icon,
     required String label,
@@ -383,6 +305,297 @@ class _MetricDetailsPageState extends State<MetricDetailsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DefaultIncidentCard extends StatefulWidget {
+  const _DefaultIncidentCard({required this.incident, required this.metricId});
+
+  final Incident incident;
+  final String metricId;
+
+  @override
+  State<_DefaultIncidentCard> createState() => _DefaultIncidentCardState();
+}
+
+class _DefaultIncidentCardState extends State<_DefaultIncidentCard> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final incident = widget.incident;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    incident.originalFilename ?? 'Unknown File',
+                    style: textTheme.titleLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Chip(
+                  label: Text(
+                    incident.severity.name.toUpperCase(),
+                    style: textTheme.labelSmall?.copyWith(color: Colors.white),
+                  ),
+                  backgroundColor: incident.severity.color,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _MetricDetailsPageState._buildDetailRow(
+              context,
+              icon: Icons.source,
+              label: 'Source',
+              value: incident.source,
+            ),
+            if (incident.postedAt != null)
+              _MetricDetailsPageState._buildDetailRow(
+                context,
+                icon: Icons.calendar_today,
+                label: 'Date',
+                value: DateFormat.yMMMd().format(incident.postedAt!),
+              ),
+            if (incident.category != null &&
+                widget.metricId != 'leaked-credentials')
+              _MetricDetailsPageState._buildDetailRow(
+                context,
+                icon: Icons.category_outlined,
+                label: 'Category',
+                value: incident.category!,
+              ),
+            // Leaked credentials emails are important enough to show without expansion
+            if (widget.metricId == 'leaked-credentials' &&
+                incident.emails.isNotEmpty)
+              ..._MetricDetailsPageState._buildEmailDetails(
+                context,
+                incident.emails,
+              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton.icon(
+                  icon: AnimatedRotation(
+                    turns: _isExpanded ? 0.25 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Icon(Icons.arrow_right),
+                  ),
+                  label: const Text('Details'),
+                  onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Open File'),
+                  onPressed: () =>
+                      _MetricDetailsPageState._showOpenFilePasswordDialog(
+                        context,
+                      ),
+                ),
+              ],
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: Container(
+                width: double.infinity,
+                child: _isExpanded
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 8.0, left: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'SHA256 Hash',
+                              incident.hashSha256,
+                            ),
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'Source Path',
+                              incident.sourcePath,
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompromisedMachineCard extends StatefulWidget {
+  final Incident incident;
+
+  const _CompromisedMachineCard({required this.incident});
+
+  @override
+  State<_CompromisedMachineCard> createState() =>
+      _CompromisedMachineCardState();
+}
+
+class _CompromisedMachineCardState extends State<_CompromisedMachineCard> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final log = widget.incident.logs.isNotEmpty
+        ? widget.incident.logs.first
+        : null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  child: Text(
+                    log?.machineName ?? 'Unknown Machine',
+                    style: textTheme.titleLarge,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Chip(
+                  label: Text(
+                    widget.incident.severity.name.toUpperCase(),
+                    style: textTheme.labelSmall?.copyWith(color: Colors.white),
+                  ),
+                  backgroundColor: widget.incident.severity.color,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _MetricDetailsPageState._buildDetailRow(
+              context,
+              icon: Icons.source,
+              label: 'Source',
+              value: widget.incident.source,
+            ),
+            if (widget.incident.postedAt != null)
+              _MetricDetailsPageState._buildDetailRow(
+                context,
+                icon: Icons.calendar_today,
+                label: 'Date',
+                value: DateFormat.yMMMd().format(widget.incident.postedAt!),
+              ),
+            if (log != null) ...[
+              _MetricDetailsPageState._buildDetailRow(
+                context,
+                icon: Icons.cookie_outlined,
+                label: 'Leaked Cookies',
+                value: (log.leakedCookies ?? 0) > 0 ? 'Yes' : 'No',
+              ),
+              _MetricDetailsPageState._buildDetailRow(
+                context,
+                icon: Icons.history_edu_outlined,
+                label: 'Leaked Autofills',
+                value: (log.leakedAutofills ?? 0) > 0 ? 'Yes' : 'No',
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (log != null)
+                  TextButton.icon(
+                    icon: AnimatedRotation(
+                      turns: _isExpanded ? 0.25 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Icon(Icons.arrow_right),
+                    ),
+                    label: const Text('Details'),
+                    onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                  ),
+                const Spacer(), // Pushes the Open File button to the right
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Open File'),
+                  onPressed: () =>
+                      _MetricDetailsPageState._showOpenFilePasswordDialog(
+                        context,
+                      ),
+                ),
+              ],
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: Container(
+                width: double.infinity,
+                child: _isExpanded && log != null
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 8.0, left: 16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'IP Address',
+                              log.machineIp,
+                            ),
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'Username',
+                              log.machineUsername,
+                            ),
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'Country',
+                              log.machineCountry,
+                            ),
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'Location',
+                              log.machineLocations,
+                            ),
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'Malware Path',
+                              log.malwarePath,
+                            ),
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'HWID',
+                              log.machineHwid,
+                            ),
+                            _MetricDetailsPageState._buildDialogDetailRow(
+                              'Malware Install Date',
+                              log.malwareInstallDate != null
+                                  ? DateFormat.yMMMd().format(
+                                      log.malwareInstallDate!,
+                                    )
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

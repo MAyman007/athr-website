@@ -48,8 +48,9 @@ class Log {
           ? null
           : DateTime.tryParse(json['malware_installDate'] as String),
       domainsLeaked: domains ?? [],
-      leakedCookies: json['Leaked_cookies'] as int?,
-      leakedAutofills: json['Leaked_Autofills'] as int?,
+      leakedCookies: (json['Leaked_cookies'] ?? json['leaked_cookies']) as int?,
+      leakedAutofills:
+          (json['Leaked_Autofills'] ?? json['leaked_autofills']) as int?,
     );
   }
 }

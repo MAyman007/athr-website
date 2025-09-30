@@ -172,24 +172,25 @@ class DashboardPage extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 24),
                                 Expanded(
+                                  child: _buildDateChart(context, viewModel),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
                                   child: _buildCategoryChart(
                                     context,
                                     viewModel,
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+
+                                const SizedBox(width: 24),
                                 Expanded(
                                   child: _buildSourceChart(context, viewModel),
                                 ),
-                                const SizedBox(width: 24),
-                                Expanded(
-                                  child: _buildCountryChart(context, viewModel),
-                                ),
                               ],
                             ),
                             const SizedBox(height: 24),
@@ -197,7 +198,7 @@ class DashboardPage extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: _buildDateChart(context, viewModel),
+                                  child: _buildCountryChart(context, viewModel),
                                 ),
                                 const SizedBox(width: 24),
                                 Expanded(
@@ -217,6 +218,8 @@ class DashboardPage extends StatelessWidget {
                           children: [
                             _buildSeverityChart(context, viewModel),
                             const SizedBox(height: 24),
+                            _buildDateChart(context, viewModel),
+                            const SizedBox(height: 24),
                             _buildCategoryChart(context, viewModel),
                             const SizedBox(height: 24),
                             _buildSourceChart(context, viewModel),
@@ -224,8 +227,6 @@ class DashboardPage extends StatelessWidget {
                             _buildCountryChart(context, viewModel),
                             const SizedBox(height: 24),
                             _buildUsernameChart(context, viewModel),
-                            const SizedBox(height: 24),
-                            _buildDateChart(context, viewModel),
                           ],
                         );
                       }
@@ -350,9 +351,9 @@ class DashboardPage extends StatelessWidget {
         SizedBox(
           height: 250,
           width: double.infinity,
-          child: _HorizontalBarChart(
+          child: _VerticalBarChart(
             data: viewModel.incidentsByUsername,
-            barColor: Colors.green,
+            color: Colors.green,
             title: 'Usernames',
           ),
         ),
@@ -795,10 +796,7 @@ class _DateLineChart extends StatelessWidget {
             sideTitles: SideTitles(showTitles: true, reservedSize: 40),
           ),
         ),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: const Color(0xff37434d)),
-        ),
+        borderData: FlBorderData(show: false),
         lineBarsData: [
           LineChartBarData(
             spots: spots,
@@ -839,122 +837,122 @@ class _DateLineChart extends StatelessWidget {
 }
 
 /// A reusable horizontal bar chart widget.
-class _HorizontalBarChart extends StatelessWidget {
-  final Map<String, int> data;
-  final Color barColor;
-  final String title;
+// class _HorizontalBarChart extends StatelessWidget {
+//   final Map<String, int> data;
+//   final Color barColor;
+//   final String title;
 
-  const _HorizontalBarChart({
-    required this.data,
-    required this.barColor,
-    required this.title,
-  });
+//   const _HorizontalBarChart({
+//     required this.data,
+//     required this.barColor,
+//     required this.title,
+//   });
 
-  @override
-  Widget build(BuildContext context) {
-    if (data.isEmpty) {
-      return Center(child: Text('No data available for $title.'));
-    }
+//   @override
+//   Widget build(BuildContext context) {
+//     if (data.isEmpty) {
+//       return Center(child: Text('No data available for $title.'));
+//     }
 
-    // Sort data to show the highest values on top and take top 10
-    final sortedEntries = data.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final topEntries = sortedEntries
-        .take(10)
-        .toList()
-        .reversed
-        .toList(); // Reverse for chart
+//     // Sort data to show the highest values on top and take top 10
+//     final sortedEntries = data.entries.toList()
+//       ..sort((a, b) => b.value.compareTo(a.value));
+//     final topEntries = sortedEntries
+//         .take(10)
+//         .toList()
+//         .reversed
+//         .toList(); // Reverse for chart
 
-    final double maxY =
-        topEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b) * 1.2;
+//     final double maxY =
+//         topEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b) * 1.2;
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxY,
-        barTouchData: BarTouchData(
-          enabled: true,
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => Colors.blueGrey,
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final entry = topEntries[groupIndex];
-              return BarTooltipItem(
-                '${entry.key}\n',
-                const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                children: <TextSpan>[
-                  TextSpan(
-                    text:
-                        '${entry.value} incident${entry.value == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      color: Colors.yellow,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (double value, TitleMeta meta) {
-                final index = value.toInt();
-                if (index >= 0 && index < topEntries.length) {
-                  return SideTitleWidget(
-                    meta: meta,
-                    space: 8.0,
-                    child: Text(
-                      topEntries[index].key,
-                      style: const TextStyle(fontSize: 10),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }
-                return Container();
-              },
-              reservedSize: 100,
-            ),
-          ),
-          bottomTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        barGroups: topEntries.asMap().entries.map((entry) {
-          final index = entry.key;
-          final data = entry.value;
-          return BarChartGroupData(
-            x: index,
-            barRods: [
-              BarChartRodData(
-                toY: data.value.toDouble(),
-                color: barColor,
-                width: 12,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ],
-          );
-        }).toList(),
-        gridData: const FlGridData(show: false),
-      ),
-      swapAnimationDuration: const Duration(milliseconds: 150),
-    );
-  }
-}
+//     return BarChart(
+//       BarChartData(
+//         alignment: BarChartAlignment.spaceAround,
+//         maxY: maxY,
+//         barTouchData: BarTouchData(
+//           enabled: true,
+//           touchTooltipData: BarTouchTooltipData(
+//             getTooltipColor: (group) => Colors.blueGrey,
+//             getTooltipItem: (group, groupIndex, rod, rodIndex) {
+//               final entry = topEntries[groupIndex];
+//               return BarTooltipItem(
+//                 '${entry.key}\n',
+//                 const TextStyle(
+//                   color: Colors.white,
+//                   fontWeight: FontWeight.bold,
+//                   fontSize: 14,
+//                 ),
+//                 children: <TextSpan>[
+//                   TextSpan(
+//                     text:
+//                         '${entry.value} incident${entry.value == 1 ? '' : 's'}',
+//                     style: const TextStyle(
+//                       color: Colors.yellow,
+//                       fontSize: 12,
+//                       fontWeight: FontWeight.w500,
+//                     ),
+//                   ),
+//                 ],
+//               );
+//             },
+//           ),
+//         ),
+//         titlesData: FlTitlesData(
+//           show: true,
+//           leftTitles: AxisTitles(
+//             sideTitles: SideTitles(
+//               showTitles: true,
+//               getTitlesWidget: (double value, TitleMeta meta) {
+//                 final index = value.toInt();
+//                 if (index >= 0 && index < topEntries.length) {
+//                   return SideTitleWidget(
+//                     meta: meta,
+//                     space: 8.0,
+//                     child: Text(
+//                       topEntries[index].key,
+//                       style: const TextStyle(fontSize: 10),
+//                       overflow: TextOverflow.ellipsis,
+//                     ),
+//                   );
+//                 }
+//                 return Container();
+//               },
+//               reservedSize: 100,
+//             ),
+//           ),
+//           bottomTitles: const AxisTitles(
+//             sideTitles: SideTitles(showTitles: false),
+//           ),
+//           topTitles: const AxisTitles(
+//             sideTitles: SideTitles(showTitles: false),
+//           ),
+//           rightTitles: const AxisTitles(
+//             sideTitles: SideTitles(showTitles: false),
+//           ),
+//         ),
+//         borderData: FlBorderData(show: false),
+//         barGroups: topEntries.asMap().entries.map((entry) {
+//           final index = entry.key;
+//           final data = entry.value;
+//           return BarChartGroupData(
+//             x: index,
+//             barRods: [
+//               BarChartRodData(
+//                 toY: data.value.toDouble(),
+//                 color: barColor,
+//                 width: 12,
+//                 borderRadius: BorderRadius.circular(4),
+//               ),
+//             ],
+//           );
+//         }).toList(),
+//         gridData: const FlGridData(show: false),
+//       ),
+//       swapAnimationDuration: const Duration(milliseconds: 150),
+//     );
+//   }
+// }
 
 /// A reusable card widget for displaying a key metric.
 class _MetricCard extends StatefulWidget {
