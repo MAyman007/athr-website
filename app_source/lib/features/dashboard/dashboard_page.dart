@@ -1,5 +1,6 @@
 import 'package:athr/core/models/incident.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:athr/core/locator.dart';
@@ -158,15 +159,54 @@ class DashboardPage extends StatelessWidget {
                     builder: (context, constraints) {
                       if (constraints.maxWidth > 800) {
                         // Wide layout: Charts side-by-side
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        return Column(
                           children: [
-                            Expanded(
-                              child: _buildSeverityChart(context, viewModel),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildSeverityChart(
+                                    context,
+                                    viewModel,
+                                  ),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  child: _buildCategoryChart(
+                                    context,
+                                    viewModel,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 24),
-                            Expanded(
-                              child: _buildCategoryChart(context, viewModel),
+                            const SizedBox(height: 24),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildSourceChart(context, viewModel),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  child: _buildCountryChart(context, viewModel),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildDateChart(context, viewModel),
+                                ),
+                                const SizedBox(width: 24),
+                                Expanded(
+                                  child: _buildUsernameChart(
+                                    context,
+                                    viewModel,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         );
@@ -178,6 +218,14 @@ class DashboardPage extends StatelessWidget {
                             _buildSeverityChart(context, viewModel),
                             const SizedBox(height: 24),
                             _buildCategoryChart(context, viewModel),
+                            const SizedBox(height: 24),
+                            _buildSourceChart(context, viewModel),
+                            const SizedBox(height: 24),
+                            _buildCountryChart(context, viewModel),
+                            const SizedBox(height: 24),
+                            _buildUsernameChart(context, viewModel),
+                            const SizedBox(height: 24),
+                            _buildDateChart(context, viewModel),
                           ],
                         );
                       }
@@ -206,26 +254,7 @@ class DashboardPage extends StatelessWidget {
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        Container(
-          height: 250,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            // color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Expanded(flex: 2, child: _SeverityPieChart(viewModel: viewModel)),
-              const SizedBox(width: 24),
-              Expanded(
-                flex: 1,
-                child: _SeverityLegend(
-                  incidentsBySeverity: viewModel.incidentsBySeverity,
-                ),
-              ),
-            ],
-          ),
-        ),
+        SizedBox(height: 250, child: _SeverityPieChart(viewModel: viewModel)),
       ],
     );
   }
@@ -252,6 +281,108 @@ class DashboardPage extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildSourceChart(BuildContext context, DashboardViewModel viewModel) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Top Leak Sources',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 250,
+          width: double.infinity,
+          child: _VerticalBarChart(
+            data: viewModel.incidentsBySource,
+            color: Colors.teal,
+            title: 'Sources',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCountryChart(
+    BuildContext context,
+    DashboardViewModel viewModel,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Compromised Assets by Country',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 250,
+          width: double.infinity,
+          child: _VerticalBarChart(
+            data: viewModel.machinesByCountry,
+            color: Colors.indigo,
+            title: 'Countries',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUsernameChart(
+    BuildContext context,
+    DashboardViewModel viewModel,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Top Affected User Accounts',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 250,
+          width: double.infinity,
+          child: _HorizontalBarChart(
+            data: viewModel.incidentsByUsername,
+            barColor: Colors.green,
+            title: 'Usernames',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateChart(BuildContext context, DashboardViewModel viewModel) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Incidents Over Time',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 250,
+          width: double.infinity,
+          child: _DateLineChart(
+            data: viewModel.incidentsByDate,
+            color: Colors.blueAccent,
+            title: 'Incidents',
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// A legend widget for the severity pie chart.
@@ -273,22 +404,24 @@ class _SeverityLegend extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: sortedEntries.map((entry) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0),
-          child: Row(
-            children: [
-              Container(width: 16, height: 16, color: entry.key.color),
-              const SizedBox(width: 8),
-              Text(
-                // Capitalize the first letter of the severity name.
-                '${entry.key.name[0].toUpperCase()}${entry.key.name.substring(1)}',
-                style: Theme.of(context).textTheme.bodyMedium,
+      children: sortedEntries
+          .map(
+            (entry) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                children: [
+                  Container(width: 16, height: 16, color: entry.key.color),
+                  const SizedBox(width: 8),
+                  Text(
+                    // Capitalize the first letter of the severity name.
+                    '${entry.key.name[0].toUpperCase()}${entry.key.name.substring(1)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      }).toList(),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -301,44 +434,53 @@ class _SeverityPieChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sections = viewModel.incidentsBySeverity.entries.map((entry) {
-      final severity = entry.key;
-      final count = entry.value;
-
-      return PieChartSectionData(
-        gradient: LinearGradient(
-          colors: [severity.color.withOpacity(0.7), severity.color],
-          begin: Alignment.bottomCenter,
-          end: Alignment.topCenter,
-        ),
-        value: count.toDouble(),
-        title: count.toString(),
-        radius: 90,
-        titleStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-          shadows: [Shadow(color: Colors.black, blurRadius: 2)],
-        ),
-        borderSide: BorderSide(color: Colors.black.withOpacity(0.2), width: 1),
-      );
-    }).toList();
-
-    if (sections.isEmpty) {
+    if (viewModel.incidentsBySeverity.isEmpty) {
       return const Center(child: Text('No severity data available.'));
     }
 
-    return PieChart(
-      PieChartData(
-        sections: sections,
-        sectionsSpace: 2,
-        centerSpaceRadius: 35,
-        pieTouchData: PieTouchData(
-          touchCallback: (FlTouchEvent event, pieTouchResponse) {
-            // You can handle touch events here if needed
-          },
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: PieChart(
+            PieChartData(
+              sections: viewModel.incidentsBySeverity.entries.map((entry) {
+                final severity = entry.key;
+                final count = entry.value;
+                return PieChartSectionData(
+                  gradient: LinearGradient(
+                    colors: [severity.color.withOpacity(0.7), severity.color],
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                  ),
+                  value: count.toDouble(),
+                  title: count.toString(),
+                  radius: 90,
+                  titleStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: [Shadow(color: Colors.black, blurRadius: 2)],
+                  ),
+                  borderSide: BorderSide(
+                    color: Colors.black.withOpacity(0.2),
+                    width: 1,
+                  ),
+                );
+              }).toList(),
+              sectionsSpace: 2,
+              centerSpaceRadius: 35,
+            ),
+          ),
         ),
-      ),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 1,
+          child: _SeverityLegend(
+            incidentsBySeverity: viewModel.incidentsBySeverity,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -404,9 +546,8 @@ class _CategoryBarChart extends StatelessWidget {
                 if (index >= 0 && index < categoryEntries.length) {
                   return SideTitleWidget(
                     meta: meta,
-                    // axisSide: meta.axisSide,
                     space: 8.0,
-                    angle: -0.7, // Rotate labels for better fit
+                    // angle: -0.7, // Rotate labels for better fit
                     child: Text(
                       categoryEntries[index].key,
                       style: const TextStyle(fontSize: 10),
@@ -470,6 +611,347 @@ class _CategoryBarChart extends StatelessWidget {
           );
         }).toList(),
       ),
+    );
+  }
+}
+
+/// A reusable vertical bar chart widget.
+class _VerticalBarChart extends StatelessWidget {
+  final Map<String, int> data;
+  final Color color;
+  final String title;
+
+  const _VerticalBarChart({
+    required this.data,
+    required this.color,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.isEmpty) {
+      return Center(child: Text('No data available for $title.'));
+    }
+
+    // Sort data to show the highest values and take top 10
+    final sortedEntries = data.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topEntries = sortedEntries.take(10).toList();
+
+    final double maxY =
+        topEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b) * 1.2;
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxY,
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (group) => Colors.blueGrey,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final entry = topEntries[groupIndex];
+              return BarTooltipItem(
+                '${entry.key}\n',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                children: <TextSpan>[
+                  TextSpan(
+                    text:
+                        '${entry.value} incident${entry.value == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                      color: Colors.yellow,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (double value, TitleMeta meta) {
+                final index = value.toInt();
+                if (index >= 0 && index < topEntries.length) {
+                  return SideTitleWidget(
+                    meta: meta,
+                    space: 8.0,
+                    // angle: -0.7, // Rotate labels for better fit
+                    child: Text(
+                      topEntries[index].key,
+                      style: const TextStyle(fontSize: 10),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }
+                return Container();
+              },
+              reservedSize: 60, // Increased size for rotated labels
+            ),
+          ),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: topEntries.asMap().entries.map((entry) {
+          final index = entry.key;
+          final data = entry.value;
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: data.value.toDouble(),
+                color: color,
+                width: 16,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(4),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+/// A reusable line chart widget for time-series data.
+class _DateLineChart extends StatelessWidget {
+  final Map<DateTime, int> data;
+  final Color color;
+  final String title;
+
+  const _DateLineChart({
+    required this.data,
+    required this.color,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.isEmpty) {
+      return Center(child: Text('No data available for $title.'));
+    }
+
+    // Sort data by date
+    final sortedEntries = data.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    final spots = sortedEntries
+        .map(
+          (entry) => FlSpot(
+            entry.key.millisecondsSinceEpoch.toDouble(),
+            entry.value.toDouble(),
+          ),
+        )
+        .toList();
+
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              interval: (spots.last.x - spots.first.x) / 4, // Adjust interval
+              getTitlesWidget: (value, meta) {
+                final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                return SideTitleWidget(
+                  meta: meta,
+                  space: 8.0,
+                  child: Text(
+                    DateFormat.MMM().format(date),
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                );
+              },
+            ),
+          ),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+          ),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(color: const Color(0xff37434d)),
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            gradient: LinearGradient(colors: [color.withOpacity(0.5), color]),
+            barWidth: 5,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [color.withOpacity(0.3), color.withOpacity(0.0)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ],
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (touchedSpot) => Colors.blueGrey.withOpacity(0.8),
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                final date = DateTime.fromMillisecondsSinceEpoch(
+                  spot.x.toInt(),
+                );
+                return LineTooltipItem(
+                  '${DateFormat.yMMM().format(date)}\n${spot.y.toInt()} incidents',
+                  const TextStyle(color: Colors.white),
+                );
+              }).toList();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A reusable horizontal bar chart widget.
+class _HorizontalBarChart extends StatelessWidget {
+  final Map<String, int> data;
+  final Color barColor;
+  final String title;
+
+  const _HorizontalBarChart({
+    required this.data,
+    required this.barColor,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (data.isEmpty) {
+      return Center(child: Text('No data available for $title.'));
+    }
+
+    // Sort data to show the highest values on top and take top 10
+    final sortedEntries = data.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topEntries = sortedEntries
+        .take(10)
+        .toList()
+        .reversed
+        .toList(); // Reverse for chart
+
+    final double maxY =
+        topEntries.map((e) => e.value).reduce((a, b) => a > b ? a : b) * 1.2;
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxY,
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (group) => Colors.blueGrey,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final entry = topEntries[groupIndex];
+              return BarTooltipItem(
+                '${entry.key}\n',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                children: <TextSpan>[
+                  TextSpan(
+                    text:
+                        '${entry.value} incident${entry.value == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                      color: Colors.yellow,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (double value, TitleMeta meta) {
+                final index = value.toInt();
+                if (index >= 0 && index < topEntries.length) {
+                  return SideTitleWidget(
+                    meta: meta,
+                    space: 8.0,
+                    child: Text(
+                      topEntries[index].key,
+                      style: const TextStyle(fontSize: 10),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                }
+                return Container();
+              },
+              reservedSize: 100,
+            ),
+          ),
+          bottomTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: topEntries.asMap().entries.map((entry) {
+          final index = entry.key;
+          final data = entry.value;
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: data.value.toDouble(),
+                color: barColor,
+                width: 12,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ],
+          );
+        }).toList(),
+        gridData: const FlGridData(show: false),
+      ),
+      swapAnimationDuration: const Duration(milliseconds: 150),
     );
   }
 }

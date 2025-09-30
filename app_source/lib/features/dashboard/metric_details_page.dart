@@ -252,14 +252,48 @@ class _MetricDetailsPageState extends State<MetricDetailsPage> {
                           OutlinedButton.icon(
                             icon: const Icon(Icons.open_in_new),
                             label: const Text('Open File'),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Permission denied. You do not have access to this file.',
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
+                            onPressed: () async {
+                              await showDialog(
+                                context: context,
+                                builder: (BuildContext dialogContext) {
+                                  final passwordController =
+                                      TextEditingController();
+                                  return AlertDialog(
+                                    title: const Text(
+                                      'Authentication Required',
+                                    ),
+                                    content: SingleChildScrollView(
+                                      child: ListBody(
+                                        children: <Widget>[
+                                          const Text(
+                                            'Please enter your account password to access this file.',
+                                          ),
+                                          const SizedBox(height: 16),
+                                          TextFormField(
+                                            controller: passwordController,
+                                            obscureText: true,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Password',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    actions: <Widget>[
+                                      TextButton(
+                                        child: const Text('Cancel'),
+                                        onPressed: () =>
+                                            Navigator.of(dialogContext).pop(),
+                                      ),
+                                      ElevatedButton(
+                                        child: const Text('Confirm'),
+                                        onPressed: () =>
+                                            Navigator.of(dialogContext).pop(),
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
                             },
                           ),

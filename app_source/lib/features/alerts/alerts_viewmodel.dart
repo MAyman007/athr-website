@@ -17,9 +17,19 @@ class AlertsViewModel extends ChangeNotifier {
   final Set<int> _readIncidentIds = {}; // Using artifactId as the ID
 
   /// A list of incidents that have not been marked as read.
-  List<Incident> get unreadAlerts => _allIncidents
-      .where((incident) => !_readIncidentIds.contains(incident.artifactId))
-      .toList();
+  List<Incident> get unreadAlerts {
+    final alerts = _allIncidents
+        .where((incident) => !_readIncidentIds.contains(incident.artifactId))
+        .toList();
+    // Sort by date, newest first. Handle null dates by placing them at the end.
+    alerts.sort((a, b) {
+      if (a.postedAt == null && b.postedAt == null) return 0;
+      if (a.postedAt == null) return 1;
+      if (b.postedAt == null) return -1;
+      return b.postedAt!.compareTo(a.postedAt!);
+    });
+    return alerts;
+  }
 
   /// Fetches all incidents from the service.
   Future<void> loadAlerts() async {

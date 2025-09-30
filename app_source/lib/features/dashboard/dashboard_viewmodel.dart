@@ -19,6 +19,10 @@ class DashboardViewModel extends ChangeNotifier {
   int _uniqueEmailCount = 0;
   Map<IncidentSeverity, int> _incidentsBySeverity = {};
   Map<String, int> _incidentsByCategory = {};
+  Map<String, int> _incidentsBySource = {};
+  Map<String, int> _machinesByCountry = {};
+  Map<String, int> _incidentsByUsername = {};
+  Map<DateTime, int> _incidentsByDate = {};
 
   // Public getters for state
   bool get isLoading => _isLoading;
@@ -51,6 +55,10 @@ class DashboardViewModel extends ChangeNotifier {
     final highSeverity = <Incident>[];
     final severityMap = <IncidentSeverity, int>{};
     final categoryMap = <String, int>{};
+    final sourceMap = <String, int>{};
+    final countryMap = <String, int>{};
+    final usernameMap = <String, int>{};
+    final dateMap = <DateTime, int>{};
     final uniqueEmails = <String>{};
 
     for (final incident in _incidents) {
@@ -81,6 +89,34 @@ class DashboardViewModel extends ChangeNotifier {
       // Incidents by Category
       final category = incident.category ?? 'Uncategorized';
       categoryMap.update(category, (count) => count + 1, ifAbsent: () => 1);
+
+      // Incidents by Source
+      sourceMap.update(
+        incident.source,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+
+      // Compromised Assets by Country & Top Affected User Accounts
+      for (final log in incident.logs) {
+        final country = log.machineCountry;
+        if (country != null) {
+          countryMap.update(country, (count) => count + 1, ifAbsent: () => 1);
+        }
+        final username = log.machineUsername;
+        if (username != null && username.isNotEmpty) {
+          usernameMap.update(username, (count) => count + 1, ifAbsent: () => 1);
+        }
+      }
+
+      // Incidents by Date
+      if (incident.postedAt != null) {
+        final date = DateTime(
+          incident.postedAt!.year,
+          incident.postedAt!.month,
+        );
+        dateMap.update(date, (count) => count + 1, ifAbsent: () => 1);
+      }
     }
 
     _leakedCredentialsIncidents = leaked;
@@ -89,6 +125,10 @@ class DashboardViewModel extends ChangeNotifier {
     _uniqueEmailCount = uniqueEmails.length;
     _incidentsBySeverity = severityMap;
     _incidentsByCategory = categoryMap;
+    _incidentsBySource = sourceMap;
+    _machinesByCountry = countryMap;
+    _incidentsByUsername = usernameMap;
+    _incidentsByDate = dateMap;
   }
 
   // --- Calculated Metrics ---
@@ -115,4 +155,16 @@ class DashboardViewModel extends ChangeNotifier {
 
   /// A map of incident counts grouped by category, suitable for charts.
   Map<String, int> get incidentsByCategory => _incidentsByCategory;
+
+  /// A map of incident counts grouped by source.
+  Map<String, int> get incidentsBySource => _incidentsBySource;
+
+  /// A map of compromised machine counts grouped by country.
+  Map<String, int> get machinesByCountry => _machinesByCountry;
+
+  /// A map of incident counts grouped by username.
+  Map<String, int> get incidentsByUsername => _incidentsByUsername;
+
+  /// A map of incident counts grouped by date.
+  Map<DateTime, int> get incidentsByDate => _incidentsByDate;
 }
