@@ -10,6 +10,7 @@ import 'admin_settings_page.dart';
 import 'admin_orgs_page.dart';
 import 'admin_users_page.dart';
 import 'admin_incidents_page.dart';
+import 'crawler_stats_tab.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -23,217 +24,244 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AdminDashboardViewModel()..fetchStats(),
-      child: Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 75,
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset('assets/athr_logo.png', height: 50),
-              const SizedBox(width: 16),
-              Text(
-                'Admin Dashboard',
-                style: TextStyle(
-                  fontSize: 22,
-                  color: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.color?.withOpacity(0.7),
-                  fontWeight: FontWeight.w300,
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          appBar: AppBar(
+            bottom: const TabBar(
+              tabs: [
+                Tab(text: 'Overview', icon: Icon(Icons.dashboard)),
+                Tab(text: 'Crawlers Stats', icon: Icon(Icons.bug_report)),
+              ],
+            ),
+            toolbarHeight: 75,
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset('assets/athr_logo.png', height: 50),
+                const SizedBox(width: 16),
+                Text(
+                  'Admin Dashboard',
+                  style: TextStyle(
+                    fontSize: 22,
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.color?.withOpacity(0.7),
+                    fontWeight: FontWeight.w300,
+                  ),
                 ),
+              ],
+            ),
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            actions: [
+              // Refresh Button
+              Consumer<AdminDashboardViewModel>(
+                builder: (context, viewModel, child) {
+                  return IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Refresh Data',
+                    onPressed: viewModel.isLoading ? null : viewModel.refresh,
+                  );
+                },
+              ),
+              // Settings Button
+              IconButton(
+                icon: const Icon(Icons.settings),
+                tooltip: 'Admin Settings',
+                onPressed: () => _showAdminSettings(context),
+              ),
+              const VerticalDivider(indent: 12, endIndent: 12),
+              // Logout Button
+              IconButton(
+                icon: const Icon(Icons.logout),
+                tooltip: 'Sign Out',
+                onPressed: () => _showSignOutDialog(context),
               ),
             ],
           ),
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          actions: [
-            // Refresh Button
-            Consumer<AdminDashboardViewModel>(
-              builder: (context, viewModel, child) {
-                return IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh Data',
-                  onPressed: viewModel.isLoading ? null : viewModel.refresh,
-                );
-              },
-            ),
-            // Settings Button
-            IconButton(
-              icon: const Icon(Icons.settings),
-              tooltip: 'Admin Settings',
-              onPressed: () => _showAdminSettings(context),
-            ),
-            const VerticalDivider(indent: 12, endIndent: 12),
-            // Logout Button
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: 'Sign Out',
-              onPressed: () => _showSignOutDialog(context),
-            ),
-          ],
-        ),
-        body: Consumer<AdminDashboardViewModel>(
-          builder: (context, viewModel, child) {
-            if (viewModel.isLoading && viewModel.stats == null) {
-              return const Center(child: CircularProgressIndicator());
-            }
+          body: TabBarView(
+            children: [
+              Consumer<AdminDashboardViewModel>(
+                builder: (context, viewModel, child) {
+                  if (viewModel.isLoading && viewModel.stats == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-            if (viewModel.errorMessage != null) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error: ${viewModel.errorMessage}',
-                        style: const TextStyle(color: Colors.red, fontSize: 16),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: viewModel.refresh,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            final stats = viewModel.stats;
-            if (stats == null) {
-              return const Center(child: Text('No data available'));
-            }
-
-            return RefreshIndicator(
-              onRefresh: () => viewModel.fetchStats(),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Metric cards
-                    Wrap(
-                      spacing: 16.0,
-                      runSpacing: 16.0,
-                      children: [
-                        _MetricCard(
-                          title: 'Total Organizations',
-                          value: stats.totalOrganizations.toString(),
-                          icon: Icons.business_rounded,
-                          color: Colors.orange,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const AdminOrgsPage(),
+                  if (viewModel.errorMessage != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.red.shade300,
                             ),
-                          ),
-                        ),
-                        _MetricCard(
-                          title: 'Total Users',
-                          value: stats.totalUsers.toString(),
-                          icon: Icons.people_rounded,
-                          color: Colors.blue,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const AdminUsersPage(),
-                            ),
-                          ),
-                        ),
-                        _MetricCard(
-                          title: 'Total Incidents',
-                          value: stats.totalIncidents.toString(),
-                          icon: Icons.warning_amber_rounded,
-                          color: Colors.purple,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => const AdminIncidentsPage(),
-                            ),
-                          ),
-                        ),
-                        _MetricCard(
-                          title: 'Avg Users/Org',
-                          value: viewModel.averageUsersPerOrg.toStringAsFixed(
-                            1,
-                          ),
-                          icon: Icons.analytics_rounded,
-                          color: Colors.green,
-                          onTap: () =>
-                              _showPlatformInsightsDialog(context, viewModel),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 48),
-
-                    // Charts Section
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        if (constraints.maxWidth > 900) {
-                          // Wide layout: Charts in rows
-                          return Column(
-                            children: [
-                              // First row of charts
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: _buildPlanDistributionChart(
-                                      viewModel,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 24),
-                                  Expanded(
-                                    child: _buildTopOrganizationsByUsers(
-                                      viewModel,
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(height: 16),
+                            Text(
+                              'Error: ${viewModel.errorMessage}',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
                               ),
-                              const SizedBox(height: 24),
-                              // Second row of charts
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: _buildTopOrganizationsByIncidents(
-                                      viewModel,
-                                    ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: viewModel.refresh,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final stats = viewModel.stats;
+                  if (stats == null) {
+                    return const Center(child: Text('No data available'));
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () => viewModel.fetchStats(),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Metric cards
+                          Wrap(
+                            spacing: 16.0,
+                            runSpacing: 16.0,
+                            children: [
+                              _MetricCard(
+                                title: 'Total Organizations',
+                                value: stats.totalOrganizations.toString(),
+                                icon: Icons.business_rounded,
+                                color: Colors.orange,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const AdminOrgsPage(),
                                   ),
-                                  const SizedBox(width: 24),
-                                  Expanded(
-                                    child: _buildLoginActivityChart(viewModel),
+                                ),
+                              ),
+                              _MetricCard(
+                                title: 'Total Users',
+                                value: stats.totalUsers.toString(),
+                                icon: Icons.people_rounded,
+                                color: Colors.blue,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AdminUsersPage(),
                                   ),
-                                ],
+                                ),
+                              ),
+                              _MetricCard(
+                                title: 'Total Incidents',
+                                value: stats.totalIncidents.toString(),
+                                icon: Icons.warning_amber_rounded,
+                                color: Colors.purple,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AdminIncidentsPage(),
+                                  ),
+                                ),
+                              ),
+                              _MetricCard(
+                                title: 'Avg Users/Org',
+                                value: viewModel.averageUsersPerOrg
+                                    .toStringAsFixed(1),
+                                icon: Icons.analytics_rounded,
+                                color: Colors.green,
+                                onTap: () => _showPlatformInsightsDialog(
+                                  context,
+                                  viewModel,
+                                ),
                               ),
                             ],
-                          );
-                        } else {
-                          // Narrow layout: Charts stacked
-                          return Column(
-                            children: [
-                              _buildPlanDistributionChart(viewModel),
-                              const SizedBox(height: 24),
-                              _buildTopOrganizationsByUsers(viewModel),
-                              const SizedBox(height: 24),
-                              _buildTopOrganizationsByIncidents(viewModel),
-                              const SizedBox(height: 24),
-                              _buildLoginActivityChart(viewModel),
-                            ],
-                          );
-                        }
-                      },
+                          ),
+                          const SizedBox(height: 48),
+
+                          // Charts Section
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              if (constraints.maxWidth > 900) {
+                                // Wide layout: Charts in rows
+                                return Column(
+                                  children: [
+                                    // First row of charts
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: _buildPlanDistributionChart(
+                                            viewModel,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 24),
+                                        Expanded(
+                                          child: _buildTopOrganizationsByUsers(
+                                            viewModel,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+                                    // Second row of charts
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child:
+                                              _buildTopOrganizationsByIncidents(
+                                                viewModel,
+                                              ),
+                                        ),
+                                        const SizedBox(width: 24),
+                                        Expanded(
+                                          child: _buildLoginActivityChart(
+                                            viewModel,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              } else {
+                                // Narrow layout: Charts stacked
+                                return Column(
+                                  children: [
+                                    _buildPlanDistributionChart(viewModel),
+                                    const SizedBox(height: 24),
+                                    _buildTopOrganizationsByUsers(viewModel),
+                                    const SizedBox(height: 24),
+                                    _buildTopOrganizationsByIncidents(
+                                      viewModel,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    _buildLoginActivityChart(viewModel),
+                                  ],
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          },
+              const CrawlerStatsTab(),
+            ],
+          ),
         ),
       ),
     );
